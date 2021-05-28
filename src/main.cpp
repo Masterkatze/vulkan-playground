@@ -56,7 +56,10 @@ private:
 	{
 		CreateInstance();
 		vkpg::Debug::SetupDebugging(instance);
+
 		window.CreateSurface();
+		window.SetFramebufferResizeCallback([this](void *, int, int) { framebuffer_resized = true; });
+
 		vulkan_device.PickPhysicalDevice();
 		vulkan_device.CreateLogicalDevice();
 		swap_chain.Create();
@@ -107,8 +110,10 @@ private:
 
 		vkDestroyDevice(vulkan_device.logical_device, nullptr);
 
-		vkDestroyInstance(instance, nullptr);
+		vkpg::Debug::TearDownDebugging(instance);
+
 		vkDestroySurfaceKHR(instance, surface, nullptr);
+		vkDestroyInstance(instance, nullptr);
 
 		window.Cleanup();
 	}
@@ -127,7 +132,7 @@ private:
 		create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 		create_info.pApplicationInfo = &app_info;
 
-		auto required_extensions = GetRequiredExtensions();
+		auto required_extensions = vkpg::VulkanWindow::GetRequiredExtensions();
 		create_info.enabledExtensionCount = static_cast<uint32_t>(required_extensions.size());
 		create_info.ppEnabledExtensionNames = required_extensions.data();
 
@@ -248,7 +253,7 @@ private:
 
 		UniformBufferObject ubo{};
 		ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-		ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		ubo.view = glm::lookAt(glm::vec3(1.8f, 1.8f, 1.8f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 		ubo.projection = glm::perspective(glm::radians(45.0f), swap_chain.swap_chain_extent.width / static_cast<float>(swap_chain.swap_chain_extent.height), 0.1f, 10.0f);
 		ubo.projection[1][1] *= -1;
 
@@ -331,22 +336,6 @@ private:
 		}
 
 		current_frame = (current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
-	}
-
-	std::vector<const char*> GetRequiredExtensions()
-	{
-		uint32_t glfw_extension_count = 0;
-		const char **glfw_extensions;
-		glfw_extensions = glfwGetRequiredInstanceExtensions(&glfw_extension_count);
-
-		std::vector<const char*> extensions(glfw_extensions, glfw_extensions + glfw_extension_count);
-
-		if(vkpg::Debug::enable_validation_layers)
-		{
-			extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-		}
-
-		return extensions;
 	}
 
 	std::vector<VkExtensionProperties> GetAvailableExtensions()

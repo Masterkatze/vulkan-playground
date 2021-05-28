@@ -3,8 +3,6 @@
 
 #include "stb_image.h"
 
-#include <glm/glm.hpp>
-
 #include <array>
 
 vkpg::VulkanSwapChain::VulkanSwapChain(VulkanDevice& vulkan_device, VulkanWindow& window, VkSurfaceKHR& surface) : vulkan_device(vulkan_device), window(window), surface(surface)
@@ -756,7 +754,7 @@ VkFormat vkpg::VulkanSwapChain::FindSupportedFormat(const std::vector<VkFormat>&
 		}
 	}
 
-	throw std::runtime_error("failed to find supported format!");
+	throw std::runtime_error("Failed to find supported format!");
 }
 
 VkFormat vkpg::VulkanSwapChain::FindDepthFormat()
@@ -907,7 +905,7 @@ void vkpg::VulkanSwapChain::TransitionImageLayout(VkImage image, VkImageLayout o
 	}
 	else
 	{
-		throw std::invalid_argument("unsupported layout transition!");
+		throw std::invalid_argument("Unsupported layout transition!");
 	}
 
 	vkCmdPipelineBarrier(command_buffer, source_stage, destination_stage, 0, 0, nullptr, 0, nullptr, 1, &barrier);

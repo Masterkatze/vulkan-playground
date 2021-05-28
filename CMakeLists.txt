@@ -23,6 +23,8 @@ add_executable(vulkan-playground
   "src/window.cpp"
   "src/utils.hpp"
   "src/utils.cpp"
+  "src/camera.hpp"
+  "src/camera.cpp"
   "src/main.cpp"
   ${GLSL_SOURCE_FILES})
 
