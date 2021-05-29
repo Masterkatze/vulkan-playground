@@ -85,6 +85,8 @@ void vkpg::VulkanSwapChain::Cleanup()
 
 	vkFreeCommandBuffers(vulkan_device.logical_device, command_pool, static_cast<uint32_t>(command_buffers.size()), command_buffers.data());
 
+	vkDestroyCommandPool(vulkan_device.logical_device, command_pool, nullptr);
+
 	vkDestroyPipeline(vulkan_device.logical_device, graphics_pipeline, nullptr);
 	vkDestroyPipelineLayout(vulkan_device.logical_device, pipeline_layout, nullptr);
 	vkDestroyRenderPass(vulkan_device.logical_device, render_pass, nullptr);
@@ -136,10 +138,17 @@ void vkpg::VulkanSwapChain::Recreate()
 
 	CreateImageViews();
 	CreateRenderPass();
+	CreateDescriptorSetLayout();
 	CreateGraphicsPipeline();
+	CreateCommandPool();
 	CreateColorResources();
 	CreateDepthResources();
 	CreateFramebuffers();
+	CreateTextureImage();
+	CreateTextureImageView();
+	CreateTextureSampler();
+	CreateVertexBuffer();
+	CreateIndexBuffer();
 	CreateUniformBuffers();
 	CreateDescriptorPool();
 	CreateDescriptorSets();

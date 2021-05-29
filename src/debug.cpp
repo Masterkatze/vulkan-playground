@@ -20,7 +20,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(VkDebugUtilsMessageSeverityF
 	#pragma unused(message_type)
 	#pragma unused(user_data)
 
-	std::cerr << "validation layer: " << callback_data->pMessage << std::endl;
+	std::cerr << "Validation layer: " << callback_data->pMessage << std::endl;
 
 	return VK_FALSE;
 }

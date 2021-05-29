@@ -26,6 +26,8 @@ target_sources(${CMAKE_PROJECT_NAME}
 	"src/utils.cpp"
 	"src/camera.hpp"
 	"src/camera.cpp"
+	"src/events.hpp"
+	"src/events.cpp"
 	"src/main.cpp"
 )
 

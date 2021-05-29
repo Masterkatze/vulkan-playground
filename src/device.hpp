@@ -39,7 +39,8 @@ public:
 	};
 
 	VulkanDevice(const VkInstance& instance, vkpg::VulkanSwapChain& swap_chain, VkSurfaceKHR& surface);
-	~VulkanDevice();
+
+	void Cleanup();
 
 	void CreateLogicalDevice();
 	QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice device) const;

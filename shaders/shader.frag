@@ -1,16 +1,16 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
-layout(binding = 1) uniform sampler2D texSampler;
+layout(binding = 1) uniform sampler2D tex_sampler;
 
-layout(location = 0) in vec3 fragColor;
-layout(location = 1) in vec2 fragTexCoord;
+layout(location = 0) in vec3 frag_color;
+layout(location = 1) in vec2 frag_tex_coord;
 
-layout(location = 0) out vec4 outColor;
+layout(location = 0) out vec4 out_color;
 
 void main()
 {
-    outColor = texture(texSampler, fragTexCoord);
-    // outColor = texture(texSampler, fragTexCoord * 2.0);
-    // outColor = vec4(fragColor * texture(texSampler, fragTexCoord).rgb, 1.0);
+	out_color = texture(tex_sampler, frag_tex_coord);
+	// out_color = texture(tex_sampler, frag_tex_coord * 2.0);
+	// out_color = vec4(frag_color * texture(tex_sampler, frag_tex_coord).rgb, 1.0);
 }

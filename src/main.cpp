@@ -11,6 +11,8 @@
 #include "swapchain.hpp"
 #include "window.hpp"
 #include "debug.hpp"
+#include "camera.hpp"
+#include "events.hpp"
 
 #include <iostream>
 #include <vector>
@@ -23,10 +25,17 @@ const int MAX_FRAMES_IN_FLIGHT = 2;
 
 const std::string MODEL_PATH = "resources/models/viking_room.obj";
 
+std::chrono::milliseconds delta_time;
+
 class Application
 {
 public:
-	Application() : vulkan_device(instance, swap_chain, surface), swap_chain(vulkan_device, window, surface), window(swap_chain, surface, instance) {};
+	Application() :
+		vulkan_device(instance, swap_chain, surface),
+		swap_chain(vulkan_device, window, surface),
+		window(swap_chain, surface, instance),
+		camera(), events(camera)
+	{};
 
 	void Run()
 	{
@@ -44,6 +53,9 @@ private:
 	vkpg::VulkanSwapChain swap_chain;
 	vkpg::VulkanWindow window;
 
+	vkpg::Camera camera;
+	vkpg::Events events;
+
 	std::vector<VkSemaphore> image_available_semaphores;
 	std::vector<VkSemaphore> render_finished_semaphores;
 	std::vector<VkFence> in_flight_fences;
@@ -58,7 +70,22 @@ private:
 		vkpg::Debug::SetupDebugging(instance);
 
 		window.CreateSurface();
-		window.SetFramebufferResizeCallback([this](void *, int, int) { framebuffer_resized = true; });
+		window.SetFramebufferResizeCallback([this](void *window, int width, int height)
+		{
+			framebuffer_resized = true;
+		});
+		window.SetKeyCallback([this](void *window, int key, int scancode, int action, int mods)
+		{
+			events.KeyCallback(window, key, scancode, action, mods);
+		});
+		window.SetMouseButtonCallback([this](void *window, int button, int action, int mods)
+		{
+			events.MouseButtonCallback(window, button, action, mods);
+		});
+		window.SetCursorPositionCallback([this](void *window, int x, int y)
+		{
+			events.CursorPositionCallback(window, x, y);
+		});
 
 		vulkan_device.PickPhysicalDevice();
 		vulkan_device.CreateLogicalDevice();
@@ -86,9 +113,22 @@ private:
 
 	void MainLoop()
 	{
+		camera.type = vkpg::Camera::CameraType::firstperson;
+		camera.SetPosition(glm::vec3(2.0f, 2.0f, 0.0f));
+
+		camera.SetRotation(glm::vec3(0.0f, 0.0f, 0.0f));
+		camera.SetPerspective(90.0f, static_cast<float>(swap_chain.swap_chain_extent.width) / static_cast<float>(swap_chain.swap_chain_extent.height), 0.1f, 256.0f);
+		camera.SetMovementSpeed(0.01f);
+
+		auto time_last = std::chrono::high_resolution_clock::now();
 		while(!window.ShouldClose())
 		{
+			auto time_now = std::chrono::high_resolution_clock::now();
+
+			delta_time = std::chrono::duration_cast<std::chrono::milliseconds>(time_last - time_now);
+
 			window.PollEvents();
+			camera.Update(delta_time);
 			DrawFrame();
 		}
 
@@ -106,9 +146,7 @@ private:
 			vkDestroyFence(vulkan_device.logical_device, in_flight_fences[i], nullptr);
 		}
 
-		vkDestroyCommandPool(vulkan_device.logical_device, swap_chain.command_pool, nullptr);
-
-		vkDestroyDevice(vulkan_device.logical_device, nullptr);
+		vulkan_device.Cleanup();
 
 		vkpg::Debug::TearDownDebugging(instance);
 
@@ -136,21 +174,24 @@ private:
 		create_info.enabledExtensionCount = static_cast<uint32_t>(required_extensions.size());
 		create_info.ppEnabledExtensionNames = required_extensions.data();
 
-		std::cout << "Required extensions:" << std::endl;
-		for(const auto& extension : required_extensions)
+		if(false)
 		{
-			std::cout << '\t' << extension << std::endl;
-		}
-		std::cout << std::endl;
+			std::cout << "Required extensions:" << std::endl;
+			for(const auto& extension : required_extensions)
+			{
+				std::cout << '\t' << extension << std::endl;
+			}
+			std::cout << std::endl;
 
-		auto available_extensions = GetAvailableExtensions();
+			auto available_extensions = GetAvailableExtensions();
 
-		std::cout << "Available extensions:" << std::endl;
-		for(const auto& extension : available_extensions)
-		{
-			std::cout << '\t' << extension.extensionName << " (version " << extension.specVersion << ")" << std::endl;
+			std::cout << "Available extensions:" << std::endl;
+			for(const auto& extension : available_extensions)
+			{
+				std::cout << '\t' << extension.extensionName << " (version " << extension.specVersion << ")" << std::endl;
+			}
+			std::cout << std::endl;
 		}
-		std::cout << std::endl;
 
 		VkDebugUtilsMessengerCreateInfoEXT debug_create_info;
 		if(vkpg::Debug::enable_validation_layers)
@@ -246,16 +287,11 @@ private:
 
 	void UpdateUniformBuffer(uint32_t current_image)
 	{
-		static auto start_time = std::chrono::high_resolution_clock::now();
-
-		auto current_time = std::chrono::high_resolution_clock::now();
-		float time = std::chrono::duration<float, std::chrono::seconds::period>(current_time - start_time).count();
-
 		UniformBufferObject ubo{};
-		ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-		ubo.view = glm::lookAt(glm::vec3(1.8f, 1.8f, 1.8f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-		ubo.projection = glm::perspective(glm::radians(45.0f), swap_chain.swap_chain_extent.width / static_cast<float>(swap_chain.swap_chain_extent.height), 0.1f, 10.0f);
-		ubo.projection[1][1] *= -1;
+
+		ubo.model = glm::mat4(1.0f);
+		ubo.view = camera.matrices.view;
+		ubo.projection = camera.matrices.perspective;
 
 		void *data;
 		vkMapMemory(vulkan_device.logical_device, swap_chain.uniform_buffers_memory[current_image], 0, sizeof(ubo), 0, &data);

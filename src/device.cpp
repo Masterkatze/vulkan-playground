@@ -4,15 +4,16 @@
 #include "swapchain.hpp"
 
 #include <set>
+#include <iostream>
 
 vkpg::VulkanDevice::VulkanDevice(const VkInstance& instance, VulkanSwapChain& swap_chain, VkSurfaceKHR& surface) : instance(instance), swap_chain(swap_chain), surface(surface)
 {
 
 }
 
-vkpg::VulkanDevice::~VulkanDevice()
+void vkpg::VulkanDevice::Cleanup()
 {
-	vkpg::Debug::TearDownDebugging(instance);
+	vkDestroyDevice(logical_device, nullptr);
 }
 
 void vkpg::VulkanDevice::CreateLogicalDevice()
@@ -173,6 +174,11 @@ void vkpg::VulkanDevice::PickPhysicalDevice()
 		throw std::runtime_error("Failed to find a suitable GPU!");
 	}
 	physical_device = *it;
+
+	VkPhysicalDeviceProperties physical_device_properties;
+	vkGetPhysicalDeviceProperties(physical_device, &physical_device_properties);
+
+	std::cout << "Physical device: " << physical_device_properties.deviceName << std::endl;
 }
 
 uint32_t vkpg::VulkanDevice::FindMemoryType(uint32_t type_filter, VkMemoryPropertyFlags properties)
