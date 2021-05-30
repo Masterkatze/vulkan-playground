@@ -74,5 +74,6 @@ void vkpg::Events::CursorPositionCallback(void* window, double x, double y)
 	{
 		camera.Translate(glm::vec3(-dx * 0.01f, -dy * 0.01f, 0.0f));
 	}
+
 	mouse_pos = glm::vec2(x, y);
 }

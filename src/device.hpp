@@ -49,7 +49,7 @@ public:
 	void PickPhysicalDevice();
 	uint32_t FindMemoryType(uint32_t type_filter, VkMemoryPropertyFlags properties);
 	void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties,
-					  VkBuffer& buffer, VkDeviceMemory& buffer_memory);
+	                  VkBuffer& buffer, VkDeviceMemory& buffer_memory);
 
 	VkSampleCountFlagBits GetMaxUsableSampleCount();
 };

@@ -16,6 +16,7 @@ struct UniformBufferObject
 	alignas(16) glm::mat4 model;
 	alignas(16) glm::mat4 view;
 	alignas(16) glm::mat4 projection;
+	alignas(16) glm::vec4 camera_position;
 };
 
 struct Vertex
@@ -118,8 +119,8 @@ public:
 	VkFormat FindDepthFormat();
 
 	VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspect_flags, int32_t mip_levels);
-	void CreateImage(uint32_t width, uint32_t height, uint32_t mip_levels, VkSampleCountFlagBits num_samples, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
-					 VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& image_memory);
+	void CreateImage(uint32_t width, uint32_t height, uint32_t mip_levels, VkSampleCountFlagBits num_samples, VkFormat format, VkImageTiling tiling,
+	                 VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& image_memory);
 
 	VkCommandBuffer BeginSingleTimeCommands();
 	void EndSingleTimeCommands(VkCommandBuffer command_buffer);
@@ -192,15 +193,15 @@ private:
 
 	template <typename T>
 	void CreateVkBuffer(vkpg::VulkanDevice& vulkan_device, const std::vector<T>& input, VkBuffer& buffer,
-						VkDeviceMemory& buffer_memory, VkBufferUsageFlags usage_flags)
+	                    VkDeviceMemory& buffer_memory, VkBufferUsageFlags usage_flags)
 	{
 		VkDeviceSize buffer_size = sizeof(input[0]) * input.size();
 
 		VkBuffer staging_buffer;
 		VkDeviceMemory staging_buffer_memory;
 		vulkan_device.CreateBuffer(buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-					 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-					 staging_buffer, staging_buffer_memory);
+		                           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		                           staging_buffer, staging_buffer_memory);
 
 		void *data;
 		vkMapMemory(vulkan_device.logical_device, staging_buffer_memory, 0, buffer_size, 0, &data);
@@ -208,7 +209,7 @@ private:
 		vkUnmapMemory(vulkan_device.logical_device, staging_buffer_memory);
 
 		vulkan_device.CreateBuffer(buffer_size, usage_flags | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-					 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, buffer, buffer_memory);
+		                           VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, buffer, buffer_memory);
 
 		CopyBuffer(staging_buffer, buffer, buffer_size);
 

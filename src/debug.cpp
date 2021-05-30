@@ -12,9 +12,9 @@ const std::vector<const char*> vkpg::Debug::validation_layers =
 VkDebugUtilsMessengerEXT debug_messenger;
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
-													VkDebugUtilsMessageTypeFlagsEXT message_type,
-													const VkDebugUtilsMessengerCallbackDataEXT *callback_data,
-													void *user_data)
+                                                    VkDebugUtilsMessageTypeFlagsEXT message_type,
+                                                    const VkDebugUtilsMessengerCallbackDataEXT *callback_data,
+                                                    void *user_data)
 {
 	#pragma unused(message_severity)
 	#pragma unused(message_type)
@@ -29,19 +29,18 @@ void vkpg::Debug::PopulateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateIn
 {
 	create_info = {};
 	create_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-	create_info.messageSeverity =
-			VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
-			VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-			VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-	create_info.messageType =
-			VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-			VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-			VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+	create_info.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+	                              VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+	                              VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+
+	create_info.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+	                          VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+	                          VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
 	create_info.pfnUserCallback = DebugCallback;
 }
 
 VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *create_info,
-									  const VkAllocationCallbacks *allocator, VkDebugUtilsMessengerEXT *debug_messenger)
+                                      const VkAllocationCallbacks *allocator, VkDebugUtilsMessengerEXT *debug_messenger)
 {
 	auto func = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT"));
 	return func ? func(instance, create_info, allocator, debug_messenger) : VK_ERROR_EXTENSION_NOT_PRESENT;

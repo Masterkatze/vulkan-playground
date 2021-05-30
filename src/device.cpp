@@ -124,9 +124,9 @@ bool vkpg::VulkanDevice::IsDeviceSuitable(VkPhysicalDevice device)
 	vkGetPhysicalDeviceFeatures(device, &supported_features);
 
 	return queue_family_indices.IsComplete() &&
-			extensions_supported &&
-			swap_chain_adequate &&
-			supported_features.samplerAnisotropy;
+	       extensions_supported &&
+	       swap_chain_adequate &&
+	       supported_features.samplerAnisotropy;
 }
 
 bool vkpg::VulkanDevice::CheckDeviceExtensionSupport(VkPhysicalDevice device)
@@ -198,7 +198,7 @@ uint32_t vkpg::VulkanDevice::FindMemoryType(uint32_t type_filter, VkMemoryProper
 }
 
 void vkpg::VulkanDevice::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties,
-				  VkBuffer& buffer, VkDeviceMemory& buffer_memory)
+                                      VkBuffer& buffer, VkDeviceMemory& buffer_memory)
 {
 	VkBufferCreateInfo buffer_info{};
 	buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -229,7 +229,8 @@ VkSampleCountFlagBits vkpg::VulkanDevice::GetMaxUsableSampleCount()
 	vkGetPhysicalDeviceProperties(physical_device, &physical_device_properties);
 
 	VkSampleCountFlags counts = physical_device_properties.limits.framebufferColorSampleCounts &
-								physical_device_properties.limits.framebufferDepthSampleCounts;
+	                            physical_device_properties.limits.framebufferDepthSampleCounts;
+
 	if(counts & VK_SAMPLE_COUNT_64_BIT) { return VK_SAMPLE_COUNT_64_BIT; }
 	if(counts & VK_SAMPLE_COUNT_32_BIT) { return VK_SAMPLE_COUNT_32_BIT; }
 	if(counts & VK_SAMPLE_COUNT_16_BIT) { return VK_SAMPLE_COUNT_16_BIT; }

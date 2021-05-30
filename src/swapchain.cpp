@@ -320,9 +320,9 @@ void vkpg::VulkanSwapChain::CreateGraphicsPipeline()
 
 	VkPipelineColorBlendAttachmentState color_blend_attachment{};
 	color_blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
-											VK_COLOR_COMPONENT_G_BIT |
-											VK_COLOR_COMPONENT_B_BIT |
-											VK_COLOR_COMPONENT_A_BIT;
+	                                        VK_COLOR_COMPONENT_G_BIT |
+	                                        VK_COLOR_COMPONENT_B_BIT |
+	                                        VK_COLOR_COMPONENT_A_BIT;
 	color_blend_attachment.blendEnable = VK_FALSE;
 
 	VkPipelineColorBlendStateCreateInfo color_blending{};
@@ -372,8 +372,8 @@ void vkpg::VulkanSwapChain::CreateColorResources()
 	VkFormat color_format = swap_chain_image_format;
 
 	CreateImage(swap_chain_extent.width, swap_chain_extent.height, 1, msaa_samples, color_format, VK_IMAGE_TILING_OPTIMAL,
-				VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, color_image, color_image_memory);
+	            VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+	            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, color_image, color_image_memory);
 
 	color_image_view = CreateImageView(color_image, color_format, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 }
@@ -382,7 +382,9 @@ void vkpg::VulkanSwapChain::CreateDepthResources()
 {
 	VkFormat depth_format = FindDepthFormat();
 
-	CreateImage(swap_chain_extent.width, swap_chain_extent.height, 1, msaa_samples, depth_format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depth_image, depth_image_memory);
+	CreateImage(swap_chain_extent.width, swap_chain_extent.height, 1, msaa_samples, depth_format, VK_IMAGE_TILING_OPTIMAL,
+	            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depth_image, depth_image_memory);
+
 	depth_image_view = CreateImageView(depth_image, depth_format, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
 }
 
@@ -423,8 +425,8 @@ void vkpg::VulkanSwapChain::CreateUniformBuffers()
 	for(size_t i = 0; i < swap_chain_images.size(); i++)
 	{
 		vulkan_device.CreateBuffer(buffer_size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-					 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-					 uniform_buffers[i], uniform_buffers_memory[i]);
+		                           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		                           uniform_buffers[i], uniform_buffers_memory[i]);
 	}
 }
 
@@ -611,7 +613,7 @@ void vkpg::VulkanSwapChain::CreateTextureImage()
 	VkBuffer staging_buffer;
 	VkDeviceMemory staging_buffer_memory;
 	vulkan_device.CreateBuffer(image_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-				 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, staging_buffer, staging_buffer_memory);
+	                           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, staging_buffer, staging_buffer_memory);
 
 	void *data;
 	vkMapMemory(vulkan_device.logical_device, staging_buffer_memory, 0, image_size, 0, &data);
@@ -621,8 +623,8 @@ void vkpg::VulkanSwapChain::CreateTextureImage()
 	stbi_image_free(pixels);
 
 	CreateImage(tex_width, tex_height, mip_levels, VK_SAMPLE_COUNT_1_BIT, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
-				VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, texture_image, texture_image_memory);
+	            VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+	            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, texture_image, texture_image_memory);
 
 	TransitionImageLayout(texture_image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mip_levels);
 	CopyBufferToImage(staging_buffer, texture_image, static_cast<uint32_t>(tex_width), static_cast<uint32_t>(tex_height));
@@ -726,10 +728,10 @@ VkExtent2D vkpg::VulkanSwapChain::ChooseSwapExtent(const VkSurfaceCapabilitiesKH
 			static_cast<uint32_t>(height)
 		};
 
-		actual_extent.width = std::max(capabilities.minImageExtent.width,
-									   std::min(capabilities.maxImageExtent.width, actual_extent.width));
+		actual_extent.width  = std::max(capabilities.minImageExtent.width,
+		                                std::min(capabilities.maxImageExtent.width, actual_extent.width));
 		actual_extent.height = std::max(capabilities.minImageExtent.height,
-									   std::min(capabilities.maxImageExtent.height, actual_extent.height));
+		                                std::min(capabilities.maxImageExtent.height, actual_extent.height));
 
 		return actual_extent;
 	}
@@ -768,10 +770,8 @@ VkFormat vkpg::VulkanSwapChain::FindSupportedFormat(const std::vector<VkFormat>&
 
 VkFormat vkpg::VulkanSwapChain::FindDepthFormat()
 {
-	return FindSupportedFormat(
-				{VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT},
-				VK_IMAGE_TILING_OPTIMAL,
-				VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+	return FindSupportedFormat({VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT},
+	                           VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
 }
 
 VkImageView vkpg::VulkanSwapChain::CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspect_flags, int32_t mip_levels)
@@ -794,8 +794,9 @@ VkImageView vkpg::VulkanSwapChain::CreateImageView(VkImage image, VkFormat forma
 	return image_view;
 }
 
-void vkpg::VulkanSwapChain::CreateImage(uint32_t width, uint32_t height, uint32_t mip_levels, VkSampleCountFlagBits num_samples, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
-				 VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& image_memory)
+void vkpg::VulkanSwapChain::CreateImage(uint32_t width, uint32_t height, uint32_t mip_levels, VkSampleCountFlagBits num_samples,
+                                        VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
+                                        VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& image_memory)
 {
 	VkImageCreateInfo image_info{};
 	image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -977,10 +978,10 @@ void vkpg::VulkanSwapChain::GenerateMipmaps(VkImage image, VkFormat image_format
 		barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
 
 		vkCmdPipelineBarrier(command_buffer,
-							 VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
-							 0, nullptr,
-							 0, nullptr,
-							 1, &barrier);
+		                     VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
+		                     0, nullptr,
+		                     0, nullptr,
+		                     1, &barrier);
 
 		VkImageBlit blit{};
 		blit.srcOffsets[0] = {0, 0, 0};
@@ -997,10 +998,10 @@ void vkpg::VulkanSwapChain::GenerateMipmaps(VkImage image, VkFormat image_format
 		blit.dstSubresource.layerCount = 1;
 
 		vkCmdBlitImage(command_buffer,
-					   image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-					   image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-					   1, &blit,
-					   VK_FILTER_LINEAR);
+		               image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+		               image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		               1, &blit,
+		               VK_FILTER_LINEAR);
 
 		barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 		barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -1008,10 +1009,10 @@ void vkpg::VulkanSwapChain::GenerateMipmaps(VkImage image, VkFormat image_format
 		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
 		vkCmdPipelineBarrier(command_buffer,
-							 VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
-							 0, nullptr,
-							 0, nullptr,
-							 1, &barrier);
+		                     VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
+		                     0, nullptr,
+		                     0, nullptr,
+		                     1, &barrier);
 
 		if(mip_width > 1) mip_width /= 2;
 		if(mip_height > 1) mip_height /= 2;
@@ -1024,10 +1025,10 @@ void vkpg::VulkanSwapChain::GenerateMipmaps(VkImage image, VkFormat image_format
 	barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
 	vkCmdPipelineBarrier(command_buffer,
-						 VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
-						 0, nullptr,
-						 0, nullptr,
-						 1, &barrier);
+	                     VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
+	                     0, nullptr,
+	                     0, nullptr,
+	                     1, &barrier);
 
 	EndSingleTimeCommands(command_buffer);
 }

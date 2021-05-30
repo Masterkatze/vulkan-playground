@@ -10,12 +10,12 @@ void vkpg::Camera::UpdateViewMatrix()
 	glm::mat4 rotM = glm::mat4(1.0f);
 	glm::mat4 transM;
 
-	rotM = glm::rotate(rotM, glm::radians(rotation.x * (flipY ? -1.0f : 1.0f)), glm::vec3(1.0f, 0.0f, 0.0f));
+	rotM = glm::rotate(rotM, glm::radians(rotation.x * (flip_y ? -1.0f : 1.0f)), glm::vec3(1.0f, 0.0f, 0.0f));
 	rotM = glm::rotate(rotM, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
 	rotM = glm::rotate(rotM, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
 
 	glm::vec3 translation = position;
-	if (flipY)
+	if (flip_y)
 	{
 		translation.y *= -1.0f;
 	}
@@ -57,7 +57,7 @@ void vkpg::Camera::SetPerspective(float fov, float aspect, float znear, float zf
 	this->z_near = znear;
 	this->z_far = zfar;
 	matrices.perspective = glm::perspective(glm::radians(fov), aspect, znear, zfar);
-	if (flipY)
+	if (flip_y)
 	{
 		matrices.perspective[1][1] *= -1.0f;
 	}
@@ -66,7 +66,7 @@ void vkpg::Camera::SetPerspective(float fov, float aspect, float znear, float zf
 void vkpg::Camera::UpdateAspectRatio(float aspect)
 {
 	matrices.perspective = glm::perspective(glm::radians(fov), aspect, z_near, z_far);
-	if (flipY)
+	if (flip_y)
 	{
 		matrices.perspective[1][1] *= -1.0f;
 	}
