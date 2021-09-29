@@ -99,8 +99,8 @@ void vkpg::VulkanWindow::KeyCallback(GLFWwindow* window, int key, int scancode, 
 
 void vkpg::VulkanWindow::MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
 {
-	if (action == GLFW_PRESS)   glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-	if (action == GLFW_RELEASE) glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+	if(action == GLFW_PRESS)   glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	if(action == GLFW_RELEASE) glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
 	mouse_button_callback(reinterpret_cast<void*>(glfwGetWindowUserPointer(window)), button, action, mods);
 }

@@ -11,6 +11,9 @@
 #include <vector>
 #include <cstring>
 
+namespace vkpg
+{
+
 struct UniformBufferObject
 {
 	alignas(16) glm::mat4 model;
@@ -62,10 +65,12 @@ struct Vertex
 	}
 };
 
+}
+
 namespace std {
-	template<> struct hash<Vertex>
+template<> struct hash<vkpg::Vertex>
 	{
-		size_t operator()(Vertex const& vertex) const
+		size_t operator()(vkpg::Vertex const& vertex) const
 		{
 			return ((hash<glm::vec3>()(vertex.position) ^ (hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^ (hash<glm::vec2>()(vertex.texture_coordinates) << 1);
 		}

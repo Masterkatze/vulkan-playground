@@ -6,6 +6,7 @@
 
 namespace vkpg
 {
+
 class VulkanSwapChain;
 
 class VulkanWindow
@@ -50,4 +51,5 @@ private:
 	static MouseButtonCallbackFunction mouse_button_callback;
 	static CursorPositionCallbackFunction cursor_position_callback;
 };
+
 }

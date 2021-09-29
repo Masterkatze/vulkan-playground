@@ -6,21 +6,22 @@
 
 namespace vkpg
 {
+
 class Camera
 {
 public:
 	enum CameraType { lookat, firstperson };
-	CameraType type = CameraType::lookat;
+	CameraType type = CameraType::firstperson;
 
-	glm::vec3 rotation = glm::vec3();
-	glm::vec3 position = glm::vec3();
-	glm::vec4 view_position = glm::vec4();
+    glm::vec3 rotation{};
+	glm::vec3 position{};
+	glm::vec4 view_position{};
 
 	float rotation_speed = 1.0f;
-	float movement_speed = 1.0f;
+	float movement_speed = 0.8f;
 
 	bool updated = false;
-	bool flip_y = true;
+	bool flip_y = false;
 
 	struct
 	{
@@ -58,8 +59,9 @@ public:
 	void Update(std::chrono::milliseconds delta_time);
 
 private:
-	float fov;
-	float z_near, z_far;
+	float fov = 90.0;
+    float z_near = 0.1;
+    float z_far = 256.0;
 
 	void UpdateViewMatrix();
 };

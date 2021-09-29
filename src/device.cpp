@@ -6,7 +6,8 @@
 #include <set>
 #include <iostream>
 
-vkpg::VulkanDevice::VulkanDevice(const VkInstance& instance, VulkanSwapChain& swap_chain, VkSurfaceKHR& surface) : instance(instance), swap_chain(swap_chain), surface(surface)
+vkpg::VulkanDevice::VulkanDevice(const VkInstance& instance, VulkanSwapChain& swap_chain, VkSurfaceKHR& surface) :
+    instance(instance), swap_chain(swap_chain), surface(surface)
 {
 
 }

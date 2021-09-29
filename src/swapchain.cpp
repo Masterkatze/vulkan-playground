@@ -5,7 +5,8 @@
 
 #include <array>
 
-vkpg::VulkanSwapChain::VulkanSwapChain(VulkanDevice& vulkan_device, VulkanWindow& window, VkSurfaceKHR& surface) : vulkan_device(vulkan_device), window(window), surface(surface)
+vkpg::VulkanSwapChain::VulkanSwapChain(VulkanDevice& vulkan_device, VulkanWindow& window, VkSurfaceKHR& surface) :
+    vulkan_device(vulkan_device), window(window), surface(surface)
 {
 
 }
@@ -36,7 +37,11 @@ void vkpg::VulkanSwapChain::Create()
 	create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
 	auto queue_family_indices = vulkan_device.FindQueueFamilies(vulkan_device.physical_device);
-	uint32_t queue_family_indices_array[] = {queue_family_indices.graphics_family.value(), queue_family_indices.present_family.value()};
+	uint32_t queue_family_indices_array[] =
+	{
+	    queue_family_indices.graphics_family.value(),
+	    queue_family_indices.present_family.value()
+	};
 
 	if(queue_family_indices.graphics_family != queue_family_indices.present_family)
 	{
@@ -83,7 +88,8 @@ void vkpg::VulkanSwapChain::Cleanup()
 		vkDestroyFramebuffer(vulkan_device.logical_device, framebuffer, nullptr);
 	}
 
-	vkFreeCommandBuffers(vulkan_device.logical_device, command_pool, static_cast<uint32_t>(command_buffers.size()), command_buffers.data());
+	vkFreeCommandBuffers(vulkan_device.logical_device, command_pool,
+	                     static_cast<uint32_t>(command_buffers.size()), command_buffers.data());
 
 	vkDestroyCommandPool(vulkan_device.logical_device, command_pool, nullptr);
 
@@ -161,7 +167,8 @@ void vkpg::VulkanSwapChain::CreateImageViews()
 
 	for(size_t i = 0; i < swap_chain_images.size(); i++)
 	{
-		swap_chain_image_views[i] = CreateImageView(swap_chain_images[i], swap_chain_image_format, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+		swap_chain_image_views[i] = CreateImageView(swap_chain_images[i], swap_chain_image_format,
+		                                            VK_IMAGE_ASPECT_COLOR_BIT, 1);
 	}
 }
 
@@ -360,7 +367,9 @@ void vkpg::VulkanSwapChain::CreateGraphicsPipeline()
 	pipeline_info.subpass = 0;
 	pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
 
-	result = vkCreateGraphicsPipelines(vulkan_device.logical_device, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &graphics_pipeline);
+	result = vkCreateGraphicsPipelines(vulkan_device.logical_device, VK_NULL_HANDLE, 1,
+	                                   &pipeline_info, nullptr, &graphics_pipeline);
+
 	CHECK_VKRESULT(result, "Failed to create graphics pipeline");
 
 	vkDestroyShaderModule(vulkan_device.logical_device, frag_shader_module, nullptr);
@@ -382,8 +391,9 @@ void vkpg::VulkanSwapChain::CreateDepthResources()
 {
 	VkFormat depth_format = FindDepthFormat();
 
-	CreateImage(swap_chain_extent.width, swap_chain_extent.height, 1, msaa_samples, depth_format, VK_IMAGE_TILING_OPTIMAL,
-	            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depth_image, depth_image_memory);
+	CreateImage(swap_chain_extent.width, swap_chain_extent.height, 1, msaa_samples,
+	            depth_format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+	            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depth_image, depth_image_memory);
 
 	depth_image_view = CreateImageView(depth_image, depth_format, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
 }
@@ -410,7 +420,9 @@ void vkpg::VulkanSwapChain::CreateFramebuffers()
 		framebuffer_info.height = swap_chain_extent.height;
 		framebuffer_info.layers = 1;
 
-		auto result = vkCreateFramebuffer(vulkan_device.logical_device, &framebuffer_info, nullptr, &swap_chain_framebuffers[i]);
+		auto result = vkCreateFramebuffer(vulkan_device.logical_device, &framebuffer_info,
+		                                  nullptr, &swap_chain_framebuffers[i]);
+
 		CHECK_VKRESULT(result, "Failed to create framebuffer");
 	}
 }
@@ -491,7 +503,8 @@ void vkpg::VulkanSwapChain::CreateDescriptorSets()
 		descriptor_writes[1].descriptorCount = 1;
 		descriptor_writes[1].pImageInfo = &image_info;
 
-		vkUpdateDescriptorSets(vulkan_device.logical_device, static_cast<uint32_t>(descriptor_writes.size()), descriptor_writes.data(), 0, nullptr);
+		vkUpdateDescriptorSets(vulkan_device.logical_device, static_cast<uint32_t>(descriptor_writes.size()),
+		                       descriptor_writes.data(), 0, nullptr);
 	}
 }
 
@@ -517,7 +530,7 @@ void vkpg::VulkanSwapChain::CreateCommandBuffers()
 		CHECK_VKRESULT(result, "Failed to begin recording command buffer");
 
 		std::array<VkClearValue, 2> clear_values{};
-		clear_values[0].color = {{0.0f, 0.0f, 0.0f, 1.0f}};
+		clear_values[0].color = {{0.5f, 0.5f, 0.5f, 1.0f}};
 		clear_values[1].depthStencil = {1.0f, 0};
 
 		VkRenderPassBeginInfo render_pass_info{};
@@ -537,7 +550,8 @@ void vkpg::VulkanSwapChain::CreateCommandBuffers()
 		VkDeviceSize offsets[] = {0};
 		vkCmdBindVertexBuffers(command_buffers[i], 0, 1, vertex_buffers, offsets);
 		vkCmdBindIndexBuffer(command_buffers[i], index_buffer, 0, VK_INDEX_TYPE_UINT32);
-		vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, 1, &descriptor_sets[i], 0, nullptr);
+		vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS,
+		                        pipeline_layout, 0, 1, &descriptor_sets[i], 0, nullptr);
 		vkCmdDrawIndexed(command_buffers[i], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 
 		vkCmdEndRenderPass(command_buffers[i]);
@@ -595,16 +609,16 @@ void vkpg::VulkanSwapChain::CreateDescriptorSetLayout()
 	CHECK_VKRESULT(result, "Failed to create descriptor set layout");
 }
 
-const std::string TEXTURE_PATH = "resources/textures/viking_room.png";
+constexpr auto TEXTURE_PATH = "resources/textures/viking_room.png";
 
 void vkpg::VulkanSwapChain::CreateTextureImage()
 {
 	int tex_width, tex_height, tex_channels;
 
-	stbi_uc *pixels = stbi_load(TEXTURE_PATH.c_str(), &tex_width, &tex_height, &tex_channels, STBI_rgb_alpha);
+	stbi_uc *pixels = stbi_load(TEXTURE_PATH, &tex_width, &tex_height, &tex_channels, STBI_rgb_alpha);
 	if(!pixels)
 	{
-		throw std::runtime_error("Failed to load texture image \"" + TEXTURE_PATH + "\"");
+        throw std::runtime_error("Failed to load texture image \"" + std::string(TEXTURE_PATH) + "\"");
 	}
 
 	VkDeviceSize image_size = tex_width * tex_height * 4;
@@ -613,7 +627,8 @@ void vkpg::VulkanSwapChain::CreateTextureImage()
 	VkBuffer staging_buffer;
 	VkDeviceMemory staging_buffer_memory;
 	vulkan_device.CreateBuffer(image_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-	                           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, staging_buffer, staging_buffer_memory);
+	                           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+	                           staging_buffer, staging_buffer_memory);
 
 	void *data;
 	vkMapMemory(vulkan_device.logical_device, staging_buffer_memory, 0, image_size, 0, &data);
@@ -695,7 +710,8 @@ VkSurfaceFormatKHR vkpg::VulkanSwapChain::ChooseSwapSurfaceFormat(const std::vec
 {
 	auto it = std::find_if(available_formats.begin(), available_formats.end(), [](const auto& available_format)
 	{
-		return available_format.format == VK_FORMAT_B8G8R8A8_SRGB && available_format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+		return available_format.format == VK_FORMAT_B8G8R8A8_SRGB &&
+		       available_format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 	});
 
 	return it != available_formats.end() ? *it : available_formats[0];
@@ -751,7 +767,8 @@ VkShaderModule vkpg::VulkanSwapChain::CreateShaderModule(const std::vector<char>
 	return shader_module;
 }
 
-VkFormat vkpg::VulkanSwapChain::FindSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
+VkFormat vkpg::VulkanSwapChain::FindSupportedFormat(const std::vector<VkFormat>& candidates,
+                                                    VkImageTiling tiling, VkFormatFeatureFlags features)
 {
 	for(VkFormat format : candidates)
 	{
@@ -774,7 +791,8 @@ VkFormat vkpg::VulkanSwapChain::FindDepthFormat()
 	                           VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
 }
 
-VkImageView vkpg::VulkanSwapChain::CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspect_flags, int32_t mip_levels)
+VkImageView vkpg::VulkanSwapChain::CreateImageView(VkImage image, VkFormat format,
+                                                   VkImageAspectFlags aspect_flags, int32_t mip_levels)
 {
 	VkImageViewCreateInfo view_info{};
 	view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -876,7 +894,8 @@ void vkpg::VulkanSwapChain::CopyBuffer(VkBuffer source, VkBuffer destination, Vk
 	EndSingleTimeCommands(command_buffer);
 }
 
-void vkpg::VulkanSwapChain::TransitionImageLayout(VkImage image, VkImageLayout old_layout, VkImageLayout new_layout, uint32_t mip_levels)
+void vkpg::VulkanSwapChain::TransitionImageLayout(VkImage image, VkImageLayout old_layout,
+                                                  VkImageLayout new_layout, uint32_t mip_levels)
 {
 	VkCommandBuffer command_buffer = BeginSingleTimeCommands();
 
@@ -943,7 +962,8 @@ void vkpg::VulkanSwapChain::CopyBufferToImage(VkBuffer buffer, VkImage image, ui
 	EndSingleTimeCommands(command_buffer);
 }
 
-void vkpg::VulkanSwapChain::GenerateMipmaps(VkImage image, VkFormat image_format, int32_t tex_width, int32_t tex_height, uint32_t mip_levels)
+void vkpg::VulkanSwapChain::GenerateMipmaps(VkImage image, VkFormat image_format,
+                                            int32_t tex_width, int32_t tex_height, uint32_t mip_levels)
 {
 	// Check if image format supports linear blitting
 	VkFormatProperties format_properties;

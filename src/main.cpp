@@ -25,16 +25,14 @@ const int MAX_FRAMES_IN_FLIGHT = 2;
 
 const std::string MODEL_PATH = "resources/models/viking_room.obj";
 
-std::chrono::milliseconds delta_time;
-
 class Application
 {
 public:
 	Application() :
-		vulkan_device(instance, swap_chain, surface),
-		swap_chain(vulkan_device, window, surface),
-		window(swap_chain, surface, instance),
-		camera(), events(camera)
+	    vulkan_device(instance, swap_chain, surface),
+	    swap_chain(vulkan_device, window, surface),
+	    window(swap_chain, surface, instance),
+	    camera(), events(camera)
 	{};
 
 	void Run()
@@ -70,9 +68,14 @@ private:
 		vkpg::Debug::SetupDebugging(instance);
 
 		window.CreateSurface();
-		window.SetFramebufferResizeCallback([this](void *window, int width, int height)
+		window.SetFramebufferResizeCallback([this](void */*window*/, int width, int height)
 		{
 			framebuffer_resized = true;
+
+			if((width > 0.0f) && (height > 0.0f))
+			{
+				camera.UpdateAspectRatio(static_cast<float>(width) / static_cast<float>(height));
+			}
 		});
 		window.SetKeyCallback([this](void *window, int key, int scancode, int action, int mods)
 		{
@@ -114,9 +117,10 @@ private:
 	void MainLoop()
 	{
 		camera.type = vkpg::Camera::CameraType::firstperson;
-		camera.SetPosition(glm::vec3(2.0f, 2.0f, 0.0f));
+		camera.flip_y = true;
+		camera.SetPosition(glm::vec3(0.0f, 0.0f, 0.0f));
 
-		camera.SetRotation(glm::vec3(0.0f, 0.0f, 0.0f));
+		camera.SetRotation(glm::vec3(0.0f, 90.0f, 0.0f));
 		camera.SetPerspective(90.0f, static_cast<float>(swap_chain.swap_chain_extent.width) / static_cast<float>(swap_chain.swap_chain_extent.height), 0.1f, 256.0f);
 		camera.SetMovementSpeed(0.01f);
 
@@ -124,8 +128,7 @@ private:
 		while(!window.ShouldClose())
 		{
 			auto time_now = std::chrono::high_resolution_clock::now();
-
-			delta_time = std::chrono::duration_cast<std::chrono::milliseconds>(time_last - time_now);
+			auto delta_time = std::chrono::duration_cast<std::chrono::milliseconds>(time_last - time_now);
 
 			window.PollEvents();
 			camera.Update(delta_time);
@@ -215,6 +218,23 @@ private:
 
 	void LoadModel()
 	{
+		//glm::vec3 position;
+		//glm::vec3 color;
+		//glm::vec2 texture_coordinates;
+
+//		auto AddVertex = [this](Vertex vertex)
+//		{
+//			uint32_t index = 0;
+//			swap_chain.vertices.push_back(vertex);
+//			swap_chain.indices.push_back(index++);
+//		};
+
+//		AddVertex({{0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}});
+//		AddVertex({{0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}});
+//		AddVertex({{1.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}});
+
+//		return;
+
 		tinyobj::attrib_t attrib;
 		std::vector<tinyobj::shape_t> shapes;
 		std::vector<tinyobj::material_t> materials;
@@ -225,13 +245,13 @@ private:
 			throw std::runtime_error(warn + err);
 		}
 
-		std::unordered_map<Vertex, uint32_t> unique_vertices{};
+		std::unordered_map<vkpg::Vertex, uint32_t> unique_vertices{};
 
 		for(const auto& shape : shapes)
 		{
 			for(const auto& index : shape.mesh.indices)
 			{
-				Vertex vertex{};
+				vkpg::Vertex vertex{};
 
 				vertex.position =
 				{
@@ -287,7 +307,7 @@ private:
 
 	void UpdateUniformBuffer(uint32_t current_image)
 	{
-		UniformBufferObject ubo{};
+		vkpg::UniformBufferObject ubo{};
 
 		ubo.model = glm::mat4(1.0f);
 		ubo.view = camera.matrices.view;
