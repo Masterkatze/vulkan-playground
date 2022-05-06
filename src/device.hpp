@@ -7,6 +7,7 @@
 
 namespace vkpg
 {
+
 class VulkanSwapChain;
 
 class VulkanDevice
@@ -19,7 +20,7 @@ public:
 		std::optional<uint32_t> present_family;
 		// TODO: add "compute" or "transfer" field
 
-		bool IsComplete()
+		bool IsComplete() const
 		{
 			return graphics_family.has_value() && present_family.has_value();
 		}
@@ -47,10 +48,11 @@ public:
 	bool IsDeviceSuitable(VkPhysicalDevice device);
 	bool CheckDeviceExtensionSupport(VkPhysicalDevice device);
 	void PickPhysicalDevice();
-	uint32_t FindMemoryType(uint32_t type_filter, VkMemoryPropertyFlags properties);
+	uint32_t FindMemoryType(uint32_t type_filter, VkMemoryPropertyFlags properties) const;
 	void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties,
 	                  VkBuffer& buffer, VkDeviceMemory& buffer_memory);
 
 	VkSampleCountFlagBits GetMaxUsableSampleCount();
 };
-}
+
+} // namespace vkpg

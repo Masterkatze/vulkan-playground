@@ -1,10 +1,10 @@
 #include "device.hpp"
 #include "debug.hpp"
-#include "utils.hpp"
 #include "swapchain.hpp"
+#include "utils.hpp"
 
-#include <set>
 #include <iostream>
+#include <set>
 
 vkpg::VulkanDevice::VulkanDevice(const VkInstance& instance, VulkanSwapChain& swap_chain, VkSurfaceKHR& surface) :
     instance(instance), swap_chain(swap_chain), surface(surface)
@@ -36,7 +36,7 @@ void vkpg::VulkanDevice::CreateLogicalDevice()
 		queueCreateInfo.queueFamilyIndex = queue_family;
 		queueCreateInfo.queueCount = 1;
 		queueCreateInfo.pQueuePriorities = &queue_priority;
-		queue_create_infos.emplace_back(std::move(queueCreateInfo));
+		queue_create_infos.emplace_back(queueCreateInfo);
 	}
 
 	VkPhysicalDeviceFeatures device_features{};
@@ -66,7 +66,7 @@ void vkpg::VulkanDevice::CreateLogicalDevice()
 	}
 
 	auto result = vkCreateDevice(physical_device, &create_info, nullptr, &logical_device);
-	CHECK_VKRESULT(result, "Failed to create logical device");
+	CheckVkResult(result, "Failed to create logical device");
 
 	vkGetDeviceQueue(logical_device, queue_family_indices.graphics_family.value(), 0, &swap_chain.graphics_queue);
 	vkGetDeviceQueue(logical_device, queue_family_indices.present_family.value(), 0, &swap_chain.present_queue);
@@ -82,7 +82,7 @@ vkpg::VulkanDevice::QueueFamilyIndices vkpg::VulkanDevice::FindQueueFamilies(VkP
 	std::vector<VkQueueFamilyProperties> queue_families(queue_family_count);
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, queue_families.data());
 
-	int i = 0;
+	uint32_t i = 0;
 	for(const auto& queue_family : queue_families)
 	{
 		if(queue_family.queueFlags & VK_QUEUE_GRAPHICS_BIT)
@@ -112,33 +112,42 @@ vkpg::VulkanDevice::QueueFamilyIndices vkpg::VulkanDevice::FindQueueFamilies(VkP
 bool vkpg::VulkanDevice::IsDeviceSuitable(VkPhysicalDevice device)
 {
 	QueueFamilyIndices queue_family_indices = FindQueueFamilies(device);
-	bool extensions_supported = CheckDeviceExtensionSupport(device);
-
-	bool swap_chain_adequate = false;
-	if(extensions_supported)
+	if(!queue_family_indices.IsComplete())
 	{
-		auto swap_chain_support = swap_chain.QuerySwapChainSupport(device);
-		swap_chain_adequate = !swap_chain_support.formats.empty() && !swap_chain_support.present_modes.empty();
+		return false;
+	}
+
+	bool extensions_supported = CheckDeviceExtensionSupport(device);
+	if(!extensions_supported)
+	{
+		return false;
+	}
+
+	auto swap_chain_support = swap_chain.QuerySwapChainSupport(device);
+	if(swap_chain_support.formats.empty() || swap_chain_support.present_modes.empty())
+	{
+		return false;
 	}
 
 	VkPhysicalDeviceFeatures supported_features;
 	vkGetPhysicalDeviceFeatures(device, &supported_features);
+	if(!supported_features.samplerAnisotropy)
+	{
+		return false;
+	}
 
-	return queue_family_indices.IsComplete() &&
-	       extensions_supported &&
-	       swap_chain_adequate &&
-	       supported_features.samplerAnisotropy;
+	return true;
 }
 
 bool vkpg::VulkanDevice::CheckDeviceExtensionSupport(VkPhysicalDevice device)
 {
 	uint32_t extension_count;
 	auto result = vkEnumerateDeviceExtensionProperties(device, nullptr, &extension_count, nullptr);
-	CHECK_VKRESULT(result, "Failed to enumerate device extension properties");
+	CheckVkResult(result, "Failed to enumerate device extension properties");
 
 	std::vector<VkExtensionProperties> available_extensions(extension_count);
 	result = vkEnumerateDeviceExtensionProperties(device, nullptr, &extension_count, available_extensions.data());
-	CHECK_VKRESULT(result, "Failed to enumerate device extension properties");
+	CheckVkResult(result, "Failed to enumerate device extension properties");
 
 	std::set<std::string> required_extensions(device_extensions.begin(), device_extensions.end());
 
@@ -154,27 +163,31 @@ void vkpg::VulkanDevice::PickPhysicalDevice()
 {
 	uint32_t device_count = 0;
 	auto result = vkEnumeratePhysicalDevices(instance, &device_count, nullptr);
-	CHECK_VKRESULT(result, "Failed to enumerate physical devices");
+	CheckVkResult(result, "Failed to enumerate physical devices");
 
 	if(device_count == 0)
 	{
-		throw std::runtime_error("Failed to find GPUs with Vulkan support!");
+		throw std::runtime_error("Failed to find GPUs with Vulkan support");
 	}
 
 	std::vector<VkPhysicalDevice> physical_devices(device_count);
 	result = vkEnumeratePhysicalDevices(instance, &device_count, physical_devices.data());
-	CHECK_VKRESULT(result, "Failed to enumerate physucal devices");
+	CheckVkResult(result, "Failed to enumerate physical devices");
 
-	auto it = std::find_if(physical_devices.begin(), physical_devices.end(), [this](const auto& d)
+	FindQueueFamilies(physical_devices.at(1));
+
+	auto it = std::find_if(physical_devices.cbegin(), physical_devices.cend(), [this](const auto& d)
 	{
 		return IsDeviceSuitable(d);
 	});
 
 	if(it == physical_devices.end())
 	{
-		throw std::runtime_error("Failed to find a suitable GPU!");
+		throw std::runtime_error("Failed to find a suitable GPU");
 	}
 	physical_device = *it;
+
+//	physical_device = physical_devices.at(1); // NVidia
 
 	VkPhysicalDeviceProperties physical_device_properties;
 	vkGetPhysicalDeviceProperties(physical_device, &physical_device_properties);
@@ -182,7 +195,7 @@ void vkpg::VulkanDevice::PickPhysicalDevice()
 	std::cout << "Physical device: " << physical_device_properties.deviceName << std::endl;
 }
 
-uint32_t vkpg::VulkanDevice::FindMemoryType(uint32_t type_filter, VkMemoryPropertyFlags properties)
+uint32_t vkpg::VulkanDevice::FindMemoryType(uint32_t type_filter, VkMemoryPropertyFlags properties) const
 {
 	VkPhysicalDeviceMemoryProperties memory_properties;
 	vkGetPhysicalDeviceMemoryProperties(physical_device, &memory_properties);
@@ -195,7 +208,7 @@ uint32_t vkpg::VulkanDevice::FindMemoryType(uint32_t type_filter, VkMemoryProper
 		}
 	}
 
-	throw std::runtime_error("failed to find suitable memory type!");
+	throw std::runtime_error("failed to find suitable memory type");
 }
 
 void vkpg::VulkanDevice::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties,
@@ -208,7 +221,7 @@ void vkpg::VulkanDevice::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usag
 	buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
 	auto result = vkCreateBuffer(logical_device, &buffer_info, nullptr, &buffer);
-	CHECK_VKRESULT(result, "Failed to create vertex buffer");
+	CheckVkResult(result, "Failed to create vertex buffer");
 
 	VkMemoryRequirements mempry_requirements;
 	vkGetBufferMemoryRequirements(logical_device, buffer, &mempry_requirements);
@@ -219,7 +232,7 @@ void vkpg::VulkanDevice::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usag
 	alloc_info.memoryTypeIndex = FindMemoryType(mempry_requirements.memoryTypeBits, properties);
 
 	result = vkAllocateMemory(logical_device, &alloc_info, nullptr, &buffer_memory);
-	CHECK_VKRESULT(result, "Failed to allocate vertex buffer memory");
+	CheckVkResult(result, "Failed to allocate vertex buffer memory");
 
 	vkBindBufferMemory(logical_device, buffer, buffer_memory, 0);
 }

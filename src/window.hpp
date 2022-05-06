@@ -50,6 +50,9 @@ private:
 	static KeyCallbackFunction key_callback;
 	static MouseButtonCallbackFunction mouse_button_callback;
 	static CursorPositionCallbackFunction cursor_position_callback;
+
+	uint32_t width = 800;
+	uint32_t height = 600;
 };
 
 }

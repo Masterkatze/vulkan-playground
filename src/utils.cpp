@@ -11,7 +11,7 @@ std::vector<char> ReadFile(const std::string& filename)
 		throw std::runtime_error("Failed to open file \"" + filename + "\"");
 	}
 
-	auto fileSize = static_cast<size_t>(file.tellg());
+	auto fileSize = static_cast<std::streamsize>(file.tellg());
 	std::vector<char> buffer(fileSize);
 
 	file.seekg(0);

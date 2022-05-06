@@ -61,14 +61,14 @@ void vkpg::Debug::SetupDebugging(VkInstance instance)
 
 	if(!CheckValidationLayerSupport())
 	{
-		throw std::runtime_error("Validation layers requested, but not available!");
+		throw std::runtime_error("Validation layers requested, but not available");
 	}
 
 	VkDebugUtilsMessengerCreateInfoEXT create_info;
 	PopulateDebugMessengerCreateInfo(create_info);
 
 	auto result = CreateDebugUtilsMessengerEXT(instance, &create_info, nullptr, &debug_messenger);
-	CHECK_VKRESULT(result, "Failed to set up debug messenger");
+	CheckVkResult(result, "Failed to set up debug messenger");
 }
 
 void vkpg::Debug::TearDownDebugging(VkInstance instance)

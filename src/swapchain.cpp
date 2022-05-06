@@ -61,7 +61,7 @@ void vkpg::VulkanSwapChain::Create()
 	create_info.oldSwapchain = VK_NULL_HANDLE;
 
 	auto result = vkCreateSwapchainKHR(vulkan_device.logical_device, &create_info, nullptr, &swap_chain);
-	CHECK_VKRESULT(result, "Failed to create swap chain");
+	CheckVkResult(result, "Failed to create swap chain");
 
 	vkGetSwapchainImagesKHR(vulkan_device.logical_device, swap_chain, &image_count, nullptr);
 	swap_chain_images.resize(image_count);
@@ -242,7 +242,7 @@ void vkpg::VulkanSwapChain::CreateRenderPass()
 	render_pass_info.pDependencies = &dependency;
 
 	auto result = vkCreateRenderPass(vulkan_device.logical_device, &render_pass_info, nullptr, &render_pass);
-	CHECK_VKRESULT(result, "Failed to create render pass");
+	CheckVkResult(result, "Failed to create render pass");
 }
 
 void vkpg::VulkanSwapChain::CreateGraphicsPipeline()
@@ -349,7 +349,7 @@ void vkpg::VulkanSwapChain::CreateGraphicsPipeline()
 	pipeline_layout_info.pSetLayouts = &descriptor_set_layout;
 
 	auto result = vkCreatePipelineLayout(vulkan_device.logical_device, &pipeline_layout_info, nullptr, &pipeline_layout);
-	CHECK_VKRESULT(result, "Failed to create pipeline layout");
+	CheckVkResult(result, "Failed to create pipeline layout");
 
 	VkGraphicsPipelineCreateInfo pipeline_info{};
 	pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -370,7 +370,7 @@ void vkpg::VulkanSwapChain::CreateGraphicsPipeline()
 	result = vkCreateGraphicsPipelines(vulkan_device.logical_device, VK_NULL_HANDLE, 1,
 	                                   &pipeline_info, nullptr, &graphics_pipeline);
 
-	CHECK_VKRESULT(result, "Failed to create graphics pipeline");
+	CheckVkResult(result, "Failed to create graphics pipeline");
 
 	vkDestroyShaderModule(vulkan_device.logical_device, frag_shader_module, nullptr);
 	vkDestroyShaderModule(vulkan_device.logical_device, vert_shader_module, nullptr);
@@ -423,7 +423,7 @@ void vkpg::VulkanSwapChain::CreateFramebuffers()
 		auto result = vkCreateFramebuffer(vulkan_device.logical_device, &framebuffer_info,
 		                                  nullptr, &swap_chain_framebuffers[i]);
 
-		CHECK_VKRESULT(result, "Failed to create framebuffer");
+		CheckVkResult(result, "Failed to create framebuffer");
 	}
 }
 
@@ -457,7 +457,7 @@ void vkpg::VulkanSwapChain::CreateDescriptorPool()
 	pool_info.maxSets = static_cast<uint32_t>(swap_chain_images.size());
 
 	auto result = vkCreateDescriptorPool(vulkan_device.logical_device, &pool_info, nullptr, &descriptor_pool);
-	CHECK_VKRESULT(result, "Failed to create descriptor pool");
+	CheckVkResult(result, "Failed to create descriptor pool");
 }
 
 void vkpg::VulkanSwapChain::CreateDescriptorSets()
@@ -471,7 +471,7 @@ void vkpg::VulkanSwapChain::CreateDescriptorSets()
 
 	descriptor_sets.resize(swap_chain_images.size());
 	auto result = vkAllocateDescriptorSets(vulkan_device.logical_device, &alloc_info, descriptor_sets.data());
-	CHECK_VKRESULT(result, "Failed to allocate descriptor sets");
+	CheckVkResult(result, "Failed to allocate descriptor sets");
 
 	for(size_t i = 0; i < swap_chain_images.size(); i++)
 	{
@@ -519,7 +519,7 @@ void vkpg::VulkanSwapChain::CreateCommandBuffers()
 	alloc_info.commandBufferCount = static_cast<uint32_t>(command_buffers.size());
 
 	auto result = vkAllocateCommandBuffers(vulkan_device.logical_device, &alloc_info, command_buffers.data());
-	CHECK_VKRESULT(result, "Failed to allocate command buffers");
+	CheckVkResult(result, "Failed to allocate command buffers");
 
 	for(size_t i = 0; i < command_buffers.size(); i++)
 	{
@@ -527,7 +527,7 @@ void vkpg::VulkanSwapChain::CreateCommandBuffers()
 		begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
 		result = vkBeginCommandBuffer(command_buffers[i], &begin_info);
-		CHECK_VKRESULT(result, "Failed to begin recording command buffer");
+		CheckVkResult(result, "Failed to begin recording command buffer");
 
 		std::array<VkClearValue, 2> clear_values{};
 		clear_values[0].color = {{0.5f, 0.5f, 0.5f, 1.0f}};
@@ -557,7 +557,7 @@ void vkpg::VulkanSwapChain::CreateCommandBuffers()
 		vkCmdEndRenderPass(command_buffers[i]);
 
 		result = vkEndCommandBuffer(command_buffers[i]);
-		CHECK_VKRESULT(result, "Failed to record command buffer");
+		CheckVkResult(result, "Failed to record command buffer");
 	}
 }
 
@@ -580,7 +580,7 @@ void vkpg::VulkanSwapChain::CreateCommandPool()
 	pool_info.queueFamilyIndex = queue_family_indices.graphics_family.value();
 
 	auto result = vkCreateCommandPool(vulkan_device.logical_device, &pool_info, nullptr, &command_pool);
-	CHECK_VKRESULT(result, "Failed to create command pool");
+	CheckVkResult(result, "Failed to create command pool");
 }
 
 void vkpg::VulkanSwapChain::CreateDescriptorSetLayout()
@@ -606,7 +606,7 @@ void vkpg::VulkanSwapChain::CreateDescriptorSetLayout()
 	layout_info.pBindings = bindings.data();
 
 	auto result = vkCreateDescriptorSetLayout(vulkan_device.logical_device, &layout_info, nullptr, &descriptor_set_layout);
-	CHECK_VKRESULT(result, "Failed to create descriptor set layout");
+	CheckVkResult(result, "Failed to create descriptor set layout");
 }
 
 constexpr auto TEXTURE_PATH = "resources/textures/viking_room.png";
@@ -676,7 +676,7 @@ void vkpg::VulkanSwapChain::CreateTextureSampler()
 	sampler_info.maxLod = static_cast<float>(mip_levels);
 	sampler_info.mipLodBias = 0.0f;
 	auto result = vkCreateSampler(vulkan_device.logical_device, &sampler_info, nullptr, &texture_sampler);
-	CHECK_VKRESULT(result, "Failed to create texture sampler");
+	CheckVkResult(result, "Failed to create texture sampler");
 }
 
 vkpg::VulkanSwapChain::SwapChainSupportDetails vkpg::VulkanSwapChain::QuerySwapChainSupport(VkPhysicalDevice device)
@@ -762,7 +762,7 @@ VkShaderModule vkpg::VulkanSwapChain::CreateShaderModule(const std::vector<char>
 
 	VkShaderModule shader_module;
 	auto result = vkCreateShaderModule(vulkan_device.logical_device, &create_info, nullptr, &shader_module);
-	CHECK_VKRESULT(result, "Failed to create shader module");
+	CheckVkResult(result, "Failed to create shader module");
 
 	return shader_module;
 }
@@ -782,7 +782,7 @@ VkFormat vkpg::VulkanSwapChain::FindSupportedFormat(const std::vector<VkFormat>&
 		}
 	}
 
-	throw std::runtime_error("Failed to find supported format!");
+	throw std::runtime_error("Failed to find supported format");
 }
 
 VkFormat vkpg::VulkanSwapChain::FindDepthFormat()
@@ -807,7 +807,7 @@ VkImageView vkpg::VulkanSwapChain::CreateImageView(VkImage image, VkFormat forma
 
 	VkImageView image_view;
 	auto result = vkCreateImageView(vulkan_device.logical_device, &view_info, nullptr, &image_view);
-	CHECK_VKRESULT(result, "Failed to create image views");
+	CheckVkResult(result, "Failed to create image views");
 
 	return image_view;
 }
@@ -832,7 +832,7 @@ void vkpg::VulkanSwapChain::CreateImage(uint32_t width, uint32_t height, uint32_
 	image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
 	auto result = vkCreateImage(vulkan_device.logical_device, &image_info, nullptr, &image);
-	CHECK_VKRESULT(result, "Failed to create image");
+	CheckVkResult(result, "Failed to create image");
 
 	VkMemoryRequirements mem_requirements;
 	vkGetImageMemoryRequirements(vulkan_device.logical_device, image, &mem_requirements);
@@ -843,7 +843,7 @@ void vkpg::VulkanSwapChain::CreateImage(uint32_t width, uint32_t height, uint32_
 	alloc_info.memoryTypeIndex = vulkan_device.FindMemoryType(mem_requirements.memoryTypeBits, properties);
 
 	result = vkAllocateMemory(vulkan_device.logical_device, &alloc_info, nullptr, &image_memory);
-	CHECK_VKRESULT(result, "Failed to allocate image memory");
+	CheckVkResult(result, "Failed to allocate image memory");
 
 	vkBindImageMemory(vulkan_device.logical_device, image, image_memory, 0);
 }
@@ -934,7 +934,7 @@ void vkpg::VulkanSwapChain::TransitionImageLayout(VkImage image, VkImageLayout o
 	}
 	else
 	{
-		throw std::invalid_argument("Unsupported layout transition!");
+		throw std::invalid_argument("Unsupported layout transition");
 	}
 
 	vkCmdPipelineBarrier(command_buffer, source_stage, destination_stage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
@@ -971,7 +971,7 @@ void vkpg::VulkanSwapChain::GenerateMipmaps(VkImage image, VkFormat image_format
 
 	if(!(format_properties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT))
 	{
-		throw std::runtime_error("texture image format does not support linear blitting!");
+		throw std::runtime_error("texture image format does not support linear blitting");
 	}
 
 	VkCommandBuffer command_buffer = BeginSingleTimeCommands();

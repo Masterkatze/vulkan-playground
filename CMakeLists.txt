@@ -8,12 +8,17 @@ find_package(glfw3 REQUIRED FATAL_ERROR)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+add_subdirectory(dep)
+
 add_executable(${CMAKE_PROJECT_NAME})
 
 target_sources(${CMAKE_PROJECT_NAME}
 	PRIVATE
 	"src/stb_image.h"
 	"src/tiny_obj_loader.h"
+
+	#"src/ui.hpp"
+	#"src/ui.cpp"
 	"src/device.hpp"
 	"src/device.cpp"
 	"src/swapchain.hpp"
@@ -49,6 +54,7 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
 	PRIVATE
 	${Vulkan_LIBRARIES}
 	glfw
+	imgui
 )
 
 target_compile_definitions(${CMAKE_PROJECT_NAME}
@@ -73,11 +79,12 @@ foreach(GLSL ${GLSL_SOURCE_FILES})
 		DEPENDS ${GLSL}
 	)
     list(APPEND SPIRV_BINARY_FILES ${SPIRV})
-endforeach(GLSL)
+endforeach()
 
 add_custom_target(shaders DEPENDS ${SPIRV_BINARY_FILES})
 add_dependencies(${CMAKE_PROJECT_NAME} shaders)
 
 add_custom_command(TARGET ${CMAKE_PROJECT_NAME} PRE_BUILD
 	COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:vulkan-playground>/resources/"
-	COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/resources/" "$<TARGET_FILE_DIR:vulkan-playground>/resources/")
+	COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/resources/" "$<TARGET_FILE_DIR:vulkan-playground>/resources/"
+)

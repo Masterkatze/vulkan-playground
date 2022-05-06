@@ -3,10 +3,6 @@
 #include "swapchain.hpp"
 #include "debug.hpp"
 
-const uint32_t WIDTH = 800;
-const uint32_t HEIGHT = 600;
-
-
 vkpg::VulkanWindow::FramebufferResizeCallbackFunction vkpg::VulkanWindow::framebuffer_resize_callback;
 vkpg::VulkanWindow::KeyCallbackFunction vkpg::VulkanWindow::key_callback;
 vkpg::VulkanWindow::MouseButtonCallbackFunction vkpg::VulkanWindow::mouse_button_callback;
@@ -23,7 +19,7 @@ void vkpg::VulkanWindow::Init()
 	// Don't create an OpenGL context
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-	window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
+	window = glfwCreateWindow(width, height, "Vulkan", nullptr, nullptr);
 	glfwSetWindowUserPointer(window, this);
 
 	glfwSetFramebufferSizeCallback(window, FramebufferResizeCallback);
@@ -37,13 +33,12 @@ void vkpg::VulkanWindow::Init()
 	{
 		glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
 	}
-
 }
 
 void vkpg::VulkanWindow::CreateSurface()
 {
 	auto result = glfwCreateWindowSurface(instance, window, nullptr, &surface);
-	CHECK_VKRESULT(result, "Failed to create window surface");
+	CheckVkResult(result, "Failed to create window surface");
 }
 
 void vkpg::VulkanWindow::Cleanup()
@@ -113,8 +108,7 @@ void vkpg::VulkanWindow::CursorPositionCallback(GLFWwindow* window, double x, do
 std::vector<const char*> vkpg::VulkanWindow::GetRequiredExtensions()
 {
 	uint32_t glfw_extension_count = 0;
-	const char **glfw_extensions;
-	glfw_extensions = glfwGetRequiredInstanceExtensions(&glfw_extension_count);
+	auto glfw_extensions = glfwGetRequiredInstanceExtensions(&glfw_extension_count);
 
 	std::vector<const char*> extensions(glfw_extensions, glfw_extensions + glfw_extension_count);
 

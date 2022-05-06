@@ -1,11 +1,5 @@
 #include <vulkan/vulkan.h>
 
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtx/hash.hpp>
-
-#include "tiny_obj_loader.h"
-
 #include "utils.hpp"
 #include "device.hpp"
 #include "swapchain.hpp"
@@ -13,6 +7,14 @@
 #include "debug.hpp"
 #include "camera.hpp"
 #include "events.hpp"
+
+#include "tiny_obj_loader.h"
+
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/hash.hpp>
+#include <imgui.h>
+#include <imgui_impl_vulkan.h>
 
 #include <iostream>
 #include <vector>
@@ -23,7 +25,7 @@
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
-const std::string MODEL_PATH = "resources/models/viking_room.obj";
+constexpr auto MODEL_PATH = "resources/models/viking_room.obj";
 
 class Application
 {
@@ -72,7 +74,7 @@ private:
 		{
 			framebuffer_resized = true;
 
-			if((width > 0.0f) && (height > 0.0f))
+			if(width > 0 && height > 0)
 			{
 				camera.UpdateAspectRatio(static_cast<float>(width) / static_cast<float>(height));
 			}
@@ -112,15 +114,22 @@ private:
 		swap_chain.CreateDescriptorSets();
 		swap_chain.CreateCommandBuffers();
 		CreateSyncObjects();
+
+		ImGui::CreateContext();
+
+		ImGuiIO& io = ImGui::GetIO();
+		int width = 0, height = 0;
+		window.GetFramebufferSize(width, height);
+		io.DisplaySize = ImVec2(width, height);
+		io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
 	}
 
 	void MainLoop()
 	{
 		camera.type = vkpg::Camera::CameraType::firstperson;
-		camera.flip_y = true;
 		camera.SetPosition(glm::vec3(0.0f, 0.0f, 0.0f));
 
-		camera.SetRotation(glm::vec3(0.0f, 90.0f, 0.0f));
+		camera.SetRotation(glm::vec3(0.0f, 0.0f, 0.0f));
 		camera.SetPerspective(90.0f, static_cast<float>(swap_chain.swap_chain_extent.width) / static_cast<float>(swap_chain.swap_chain_extent.height), 0.1f, 256.0f);
 		camera.SetMovementSpeed(0.01f);
 
@@ -140,6 +149,8 @@ private:
 
 	void Cleanup()
 	{
+		ImGui::DestroyContext();
+
 		swap_chain.Cleanup();
 
 		for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
@@ -213,34 +224,46 @@ private:
 		}
 
 		auto result = vkCreateInstance(&create_info, nullptr, &instance);
-		CHECK_VKRESULT(result, "Failed to create instance");
+		CheckVkResult(result, "Failed to create instance");
 	}
 
 	void LoadModel()
 	{
-		//glm::vec3 position;
-		//glm::vec3 color;
-		//glm::vec2 texture_coordinates;
-
-//		auto AddVertex = [this](Vertex vertex)
+//        auto AddVertex = [this](vkpg::Vertex vertex)
 //		{
-//			uint32_t index = 0;
+//			static uint32_t index = 0;
 //			swap_chain.vertices.push_back(vertex);
 //			swap_chain.indices.push_back(index++);
 //		};
 
-//		AddVertex({{0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}});
-//		AddVertex({{0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}});
-//		AddVertex({{1.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}});
+//		AddVertex({{0.0f, -1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}});
+//		AddVertex({{0.1f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}});
+//		AddVertex({{-1.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}});
 
 //		return;
+
+//        swap_chain.vertices =
+//        {
+//            {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+//            {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+//            {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+//            {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}
+//        };
+
+//        swap_chain.indices =
+//        {
+//            0, 1, 2, 2, 3, 0
+//        };
+
+
+//        return;
 
 		tinyobj::attrib_t attrib;
 		std::vector<tinyobj::shape_t> shapes;
 		std::vector<tinyobj::material_t> materials;
 		std::string warn, err;
 
-		if(!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, MODEL_PATH.c_str()))
+		if(!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, MODEL_PATH))
 		{
 			throw std::runtime_error(warn + err);
 		}
@@ -295,22 +318,27 @@ private:
 		for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 		{
 			auto result = vkCreateSemaphore(vulkan_device.logical_device, &semaphore_info, nullptr, &image_available_semaphores[i]);
-			CHECK_VKRESULT(result, "Failed to create semaphore");
+			CheckVkResult(result, "Failed to create semaphore");
 
 			result = vkCreateSemaphore(vulkan_device.logical_device, &semaphore_info, nullptr, &render_finished_semaphores[i]);
-			CHECK_VKRESULT(result, "Failed to create semaphore");
+			CheckVkResult(result, "Failed to create semaphore");
 
 			result = vkCreateFence(vulkan_device.logical_device, &fence_info, nullptr, &in_flight_fences[i]);
-			CHECK_VKRESULT(result, "Failed to create fence");
+			CheckVkResult(result, "Failed to create fence");
 		}
 	}
 
 	void UpdateUniformBuffer(uint32_t current_image)
 	{
-		vkpg::UniformBufferObject ubo{};
+        static auto start_time = std::chrono::high_resolution_clock::now();
+        auto current_time = std::chrono::high_resolution_clock::now();
+        float time = std::chrono::duration<float, std::chrono::seconds::period>(current_time - start_time).count();
 
-		ubo.model = glm::mat4(1.0f);
+        vkpg::UniformBufferObject ubo{};
+		//ubo.model = glm::mat4(1.0f);
+        ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 		ubo.view = camera.matrices.view;
+        //ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 		ubo.projection = camera.matrices.perspective;
 
 		void *data;
@@ -365,7 +393,7 @@ private:
 		vkResetFences(vulkan_device.logical_device, 1, &in_flight_fences[current_frame]);
 
 		result = vkQueueSubmit(swap_chain.graphics_queue, 1, &submit_info, in_flight_fences[current_frame]);
-		CHECK_VKRESULT(result, "Failed to submit draw command buffer");
+		CheckVkResult(result, "Failed to submit draw command buffer");
 
 		VkPresentInfoKHR present_info{};
 		present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
