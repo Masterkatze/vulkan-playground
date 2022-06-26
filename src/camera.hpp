@@ -37,10 +37,10 @@ public:
 		bool down = false;
 	} keys;
 
-	bool IsMoving();
+	bool IsMoving() const;
 
-	float GetNearClip();
-	float GetFarClip();
+	float GetNearClip() const;
+	float GetFarClip() const;
 
 	void SetPerspective(float fov, float aspect, float znear, float zfar);
 

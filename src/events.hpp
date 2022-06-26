@@ -30,4 +30,4 @@ private:
 	} mouse_buttons;
 };
 
-}
+} // namespace vkpg

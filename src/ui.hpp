@@ -1,4 +1,4 @@
-#pragma once
+ // namespace vkpg#pragma once
 
 //#include <stdio.h>
 //#include <stdlib.h>
@@ -11,7 +11,7 @@
 
 #include "device.hpp"
 
-#include "imgui/imgui.h"
+#include <imgui.h>
 
 #include <glm/glm.hpp>
 

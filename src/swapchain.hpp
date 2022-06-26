@@ -98,17 +98,22 @@ public:
 
 	void CreateImageViews();
 	void CreateRenderPass();
+	void CreateUiRenderPass();
 	void CreateGraphicsPipeline();
 	void CreateColorResources();
 	void CreateDepthResources();
 	void CreateFramebuffers();
+	void CreateUiFramebuffers();
 	void CreateUniformBuffers();
 	void CreateDescriptorPool();
+	void CreateUiDescriptorPool();
 	void CreateDescriptorSets();
 	void CreateCommandBuffers();
+	void CreateUiCommandBuffers();
 	void CreateVertexBuffer();
 	void CreateIndexBuffer();
 	void CreateCommandPool();
+	void CreateUiCommandPool();
 	void CreateDescriptorSetLayout();
 	void CreateTextureImage();
 	void CreateTextureImageView();
@@ -127,8 +132,8 @@ public:
 	void CreateImage(uint32_t width, uint32_t height, uint32_t mip_levels, VkSampleCountFlagBits num_samples, VkFormat format, VkImageTiling tiling,
 	                 VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& image_memory);
 
-	VkCommandBuffer BeginSingleTimeCommands();
-	void EndSingleTimeCommands(VkCommandBuffer command_buffer);
+	VkCommandBuffer BeginSingleTimeCommands(VkCommandPool pool);
+	void EndSingleTimeCommands(VkCommandPool pool, VkCommandBuffer command_buffer);
 
 	void CopyBuffer(VkBuffer source, VkBuffer destination, VkDeviceSize size);
 
@@ -142,26 +147,43 @@ public:
 	VkCommandPool command_pool;
 	std::vector<VkCommandBuffer> command_buffers;
 
+	VkCommandPool ui_command_pool;
+	std::vector<VkCommandBuffer> ui_command_buffers;
+
 	VkQueue graphics_queue;
 	VkQueue present_queue;
 
 	std::vector<Vertex> vertices;
 	std::vector<uint32_t> indices;
 
-	std::vector<VkImage> swap_chain_images;
-	VkExtent2D swap_chain_extent;
+	std::vector<VkImage> images;
+	VkExtent2D extent;
 
 	std::vector<VkDeviceMemory> uniform_buffers_memory;
+
+	VkDescriptorPool descriptor_pool;
+	VkDescriptorPool ui_descriptor_pool;
+
+	VkRenderPass render_pass;
+	VkRenderPass ui_render_pass;
+
+	VkPipelineCache pipeline_cache{nullptr};
+
+	uint32_t image_count{};
+
+	VkSampleCountFlagBits msaa_samples = VK_SAMPLE_COUNT_1_BIT;
+
+	std::vector<VkFramebuffer> ui_framebuffers;
 
 private:
 	vkpg::VulkanDevice& vulkan_device;
 	vkpg::VulkanWindow& window;
 	VkSurfaceKHR& surface;
 
-	VkFormat swap_chain_image_format;
+	VkFormat image_format;
 
-	std::vector<VkImageView> swap_chain_image_views;
-	std::vector<VkFramebuffer> swap_chain_framebuffers;
+	std::vector<VkImageView> image_views;
+	std::vector<VkFramebuffer> framebuffers;
 
 	VkImage depth_image;
 	VkDeviceMemory depth_image_memory;
@@ -171,13 +193,8 @@ private:
 	VkDeviceMemory color_image_memory;
 	VkImageView color_image_view;
 
-	VkSampleCountFlagBits msaa_samples = VK_SAMPLE_COUNT_1_BIT;
-
-	VkRenderPass render_pass;
-
 	std::vector<VkBuffer> uniform_buffers;
 
-	VkDescriptorPool descriptor_pool;
 	std::vector<VkDescriptorSet> descriptor_sets;
 
 	VkBuffer vertex_buffer;
@@ -222,4 +239,5 @@ private:
 		vkFreeMemory(vulkan_device.logical_device, staging_buffer_memory, nullptr);
 	}
 };
-}
+
+} // namespace vkpg

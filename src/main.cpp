@@ -14,14 +14,15 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/hash.hpp>
 #include <imgui.h>
+#include <imgui_impl_glfw.h>
 #include <imgui_impl_vulkan.h>
 
-#include <iostream>
-#include <vector>
-#include <set>
-#include <optional>
 #include <chrono>
+#include <iostream>
+#include <optional>
+#include <set>
 #include <unordered_map>
+#include <vector>
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -39,7 +40,6 @@ public:
 
 	void Run()
 	{
-		window.Init();
 		InitVulkan();
 		MainLoop();
 		Cleanup();
@@ -66,9 +66,9 @@ private:
 
 	void InitVulkan()
 	{
+		window.Init();
 		CreateInstance();
 		vkpg::Debug::SetupDebugging(instance);
-
 		window.CreateSurface();
 		window.SetFramebufferResizeCallback([this](void */*window*/, int width, int height)
 		{
@@ -81,10 +81,20 @@ private:
 		});
 		window.SetKeyCallback([this](void *window, int key, int scancode, int action, int mods)
 		{
+			if(ImGui::GetIO().WantCaptureKeyboard)
+			{
+				return;
+			}
+
 			events.KeyCallback(window, key, scancode, action, mods);
 		});
 		window.SetMouseButtonCallback([this](void *window, int button, int action, int mods)
 		{
+			if(ImGui::GetIO().WantCaptureMouse)
+			{
+				return;
+			}
+
 			events.MouseButtonCallback(window, button, action, mods);
 		});
 		window.SetCursorPositionCallback([this](void *window, int x, int y)
@@ -97,12 +107,15 @@ private:
 		swap_chain.Create();
 		swap_chain.CreateImageViews();
 		swap_chain.CreateRenderPass();
+		swap_chain.CreateUiRenderPass();
 		swap_chain.CreateDescriptorSetLayout();
 		swap_chain.CreateGraphicsPipeline();
 		swap_chain.CreateCommandPool();
+		swap_chain.CreateUiCommandPool();
 		swap_chain.CreateColorResources();
 		swap_chain.CreateDepthResources();
 		swap_chain.CreateFramebuffers();
+		swap_chain.CreateUiFramebuffers();
 		swap_chain.CreateTextureImage();
 		swap_chain.CreateTextureImageView();
 		swap_chain.CreateTextureSampler();
@@ -111,17 +124,49 @@ private:
 		swap_chain.CreateIndexBuffer();
 		swap_chain.CreateUniformBuffers();
 		swap_chain.CreateDescriptorPool();
+		swap_chain.CreateUiDescriptorPool();
 		swap_chain.CreateDescriptorSets();
 		swap_chain.CreateCommandBuffers();
+		swap_chain.CreateUiCommandBuffers();
 		CreateSyncObjects();
 
-		ImGui::CreateContext();
+		//InitImGui();
+		{
+			IMGUI_CHECKVERSION();
+			ImGui::CreateContext();
+			ImGui::StyleColorsDark();
 
-		ImGuiIO& io = ImGui::GetIO();
-		int width = 0, height = 0;
-		window.GetFramebufferSize(width, height);
-		io.DisplaySize = ImVec2(width, height);
-		io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
+			auto& io = ImGui::GetIO();
+			int width = 0, height = 0;
+			window.GetFramebufferSize(width, height);
+			io.DisplaySize = ImVec2(width, height);
+			io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
+
+			ImGui_ImplGlfw_InitForVulkan(window.GetNativeHandler(), true);
+			ImGui_ImplVulkan_InitInfo init_info = {};
+			init_info.Instance = instance;
+			init_info.PhysicalDevice = vulkan_device.physical_device;
+			init_info.Device = vulkan_device.logical_device;
+			init_info.QueueFamily = vulkan_device.queue_family_indices.present_family.value();
+			init_info.Queue = swap_chain.graphics_queue;
+			init_info.PipelineCache = swap_chain.pipeline_cache;
+			init_info.DescriptorPool = swap_chain.ui_descriptor_pool;
+			init_info.Subpass = 0;
+			init_info.MinImageCount = MAX_FRAMES_IN_FLIGHT;
+			init_info.ImageCount = swap_chain.image_count;
+			init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+			init_info.Allocator = nullptr;
+			init_info.CheckVkResultFn = [](VkResult result)
+			{
+				CheckVkResult(result);
+			};
+			ImGui_ImplVulkan_Init(&init_info, swap_chain.ui_render_pass);
+
+			VkCommandBuffer command_buffer = swap_chain.BeginSingleTimeCommands(swap_chain.ui_command_pool);
+			ImGui_ImplVulkan_CreateFontsTexture(command_buffer);
+			swap_chain.EndSingleTimeCommands(swap_chain.ui_command_pool, command_buffer);
+			ImGui_ImplVulkan_DestroyFontUploadObjects();
+		}
 	}
 
 	void MainLoop()
@@ -130,7 +175,7 @@ private:
 		camera.SetPosition(glm::vec3(0.0f, 0.0f, 0.0f));
 
 		camera.SetRotation(glm::vec3(0.0f, 0.0f, 0.0f));
-		camera.SetPerspective(90.0f, static_cast<float>(swap_chain.swap_chain_extent.width) / static_cast<float>(swap_chain.swap_chain_extent.height), 0.1f, 256.0f);
+		camera.SetPerspective(90.0f, static_cast<float>(swap_chain.extent.width) / static_cast<float>(swap_chain.extent.height), 0.1f, 256.0f);
 		camera.SetMovementSpeed(0.01f);
 
 		auto time_last = std::chrono::high_resolution_clock::now();
@@ -141,6 +186,15 @@ private:
 
 			window.PollEvents();
 			camera.Update(delta_time);
+
+			ImGui_ImplGlfw_NewFrame();
+			ImGui_ImplVulkan_NewFrame();
+			ImGui::NewFrame();
+
+			ImGui::ShowDemoWindow();
+
+			ImGui::Render();
+
 			DrawFrame();
 		}
 
@@ -149,6 +203,9 @@ private:
 
 	void Cleanup()
 	{
+		// TODO: move to imgui.cleanup
+		ImGui_ImplVulkan_Shutdown();
+		ImGui_ImplGlfw_Shutdown();
 		ImGui::DestroyContext();
 
 		swap_chain.Cleanup();
@@ -174,7 +231,7 @@ private:
 	{
 		VkApplicationInfo app_info{};
 		app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-		app_info.pApplicationName = "Vulkan Tutorial";
+		app_info.pApplicationName = "Vulkan Playground";
 		app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
 		app_info.pEngineName = "No Engine";
 		app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
@@ -306,7 +363,7 @@ private:
 		image_available_semaphores.resize(MAX_FRAMES_IN_FLIGHT);
 		render_finished_semaphores.resize(MAX_FRAMES_IN_FLIGHT);
 		in_flight_fences.resize(MAX_FRAMES_IN_FLIGHT);
-		images_in_flight.resize(swap_chain.swap_chain_images.size(), VK_NULL_HANDLE);
+		images_in_flight.resize(swap_chain.images.size(), VK_NULL_HANDLE);
 
 		VkSemaphoreCreateInfo semaphore_info{};
 		semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -335,10 +392,12 @@ private:
         float time = std::chrono::duration<float, std::chrono::seconds::period>(current_time - start_time).count();
 
         vkpg::UniformBufferObject ubo{};
-		//ubo.model = glm::mat4(1.0f);
-        ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		ubo.model = glm::mat4(1.0f);
+        //ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+
 		ubo.view = camera.matrices.view;
         //ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+
 		ubo.projection = camera.matrices.perspective;
 
 		void *data;
@@ -366,6 +425,42 @@ private:
 
 		UpdateUniformBuffer(image_index);
 
+		//recordUICommands(image_index);
+		{
+			VkCommandBufferBeginInfo cmdBufferBegin = {};
+		    cmdBufferBegin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		    cmdBufferBegin.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+		    if (vkBeginCommandBuffer(swap_chain.ui_command_buffers[image_index], &cmdBufferBegin) != VK_SUCCESS)
+			{
+		        throw std::runtime_error("Unable to start recording UI command buffer!");
+		    }
+
+			VkClearValue clearColor{0.0f, 0.0f, 0.0f, 1.0f};
+		    VkRenderPassBeginInfo renderPassBeginInfo = {};
+		    renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		    renderPassBeginInfo.renderPass = swap_chain.ui_render_pass;
+		    renderPassBeginInfo.framebuffer = swap_chain.ui_framebuffers[image_index];
+		    renderPassBeginInfo.renderArea.extent.width = swap_chain.extent.width;
+		    renderPassBeginInfo.renderArea.extent.height = swap_chain.extent.height;
+		    renderPassBeginInfo.clearValueCount = 1;
+		    renderPassBeginInfo.pClearValues = &clearColor;
+
+		    vkCmdBeginRenderPass(swap_chain.ui_command_buffers[image_index], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+		    // Grab and record the draw data for Dear Imgui
+		    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), swap_chain.ui_command_buffers[image_index]);
+
+		    // End and submit render pass
+		    vkCmdEndRenderPass(swap_chain.ui_command_buffers[image_index]);
+
+
+		    if(vkEndCommandBuffer(swap_chain.ui_command_buffers[image_index]) != VK_SUCCESS)
+			{
+		        throw std::runtime_error("Failed to record command buffers!");
+		    }
+		}
+
 		// Check if a previous frame is using this image (i.e. there is its fence to wait on)
 		if(images_in_flight[image_index] != VK_NULL_HANDLE)
 		{
@@ -379,12 +474,18 @@ private:
 
 		VkSemaphore wait_semaphores[] = {image_available_semaphores[current_frame]};
 		VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+
+		std::array<VkCommandBuffer, 2> command_buffers
+		{{
+			swap_chain.command_buffers[image_index],
+			swap_chain.ui_command_buffers[image_index]
+		}};
+
 		submit_info.waitSemaphoreCount = 1;
 		submit_info.pWaitSemaphores = wait_semaphores;
 		submit_info.pWaitDstStageMask = wait_stages;
-
-		submit_info.commandBufferCount = 1;
-		submit_info.pCommandBuffers = &swap_chain.command_buffers[image_index];
+		submit_info.commandBufferCount = command_buffers.size();
+		submit_info.pCommandBuffers = command_buffers.data();
 
 		VkSemaphore signal_semaphores[] = {render_finished_semaphores[current_frame]};
 		submit_info.signalSemaphoreCount = 1;
@@ -401,9 +502,9 @@ private:
 		present_info.waitSemaphoreCount = 1;
 		present_info.pWaitSemaphores = signal_semaphores;
 
-		VkSwapchainKHR swapChains[] = {swap_chain.swap_chain};
-		present_info.swapchainCount = 1;
-		present_info.pSwapchains = swapChains;
+		std::array<VkSwapchainKHR, 1> swap_chains{{swap_chain.swap_chain}};
+		present_info.swapchainCount = swap_chains.size();
+		present_info.pSwapchains = swap_chains.data();
 
 		present_info.pImageIndices = &image_index;
 

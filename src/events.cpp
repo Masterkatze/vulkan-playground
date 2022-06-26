@@ -4,7 +4,7 @@
 
 void vkpg::Events::KeyCallback(void *window, int key, int scancode, int action, int mods)
 {
-	//auto glfw_window = static_cast<GLFWwindow*>(window_);
+	auto glfw_window = static_cast<GLFWwindow*>(window);
 
 	//std::cout << "key=" << key << " scancode=" << scancode << " action=" << action << " mods" << mods << std::endl;
 
@@ -33,6 +33,11 @@ void vkpg::Events::KeyCallback(void *window, int key, int scancode, int action, 
 		if(action == GLFW_PRESS)   camera.keys.right = true;
 		if(action == GLFW_RELEASE) camera.keys.right = false;
 	}
+	if(key == GLFW_KEY_Q)
+	{
+		glfwSetWindowShouldClose(glfw_window, GLFW_TRUE);
+	}
+
 }
 
 void vkpg::Events::MouseButtonCallback(void *window, int button, int action, int mods)

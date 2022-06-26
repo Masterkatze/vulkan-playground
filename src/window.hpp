@@ -25,22 +25,24 @@ public:
 	bool ShouldClose();
 	void PollEvents();
 
-	void GetFramebufferSize(int& width, int& height);
+	void GetFramebufferSize(int& width, int& height) const;
 
-	void SetFramebufferResizeCallback(FramebufferResizeCallbackFunction callback);
-	void SetKeyCallback(KeyCallbackFunction callback);
-	void SetMouseButtonCallback(std::function<void(void*, int, int, int)> callback);
-	void SetCursorPositionCallback(std::function<void(void*, int, int)> callback);
+	static void SetFramebufferResizeCallback(FramebufferResizeCallbackFunction callback);
+	static void SetKeyCallback(KeyCallbackFunction callback);
+	static void SetMouseButtonCallback(std::function<void(void*, int, int, int)> callback);
+	static void SetCursorPositionCallback(std::function<void(void*, int, int)> callback);
 
 	static std::vector<const char*> GetRequiredExtensions();
 
-	GLFWwindow *window;
+	GLFWwindow* GetNativeHandler();
 
 private:
 	static void FramebufferResizeCallback(GLFWwindow* window, int width, int height);
 	static void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 	static void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
 	static void CursorPositionCallback(GLFWwindow* window, double x, double y);
+
+	GLFWwindow *window;
 
 	vkpg::VulkanSwapChain& swap_chain;
 	VkSurfaceKHR& surface;
@@ -55,4 +57,4 @@ private:
 	uint32_t height = 600;
 };
 
-}
+} // namespace vkpg

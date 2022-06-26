@@ -1,8 +1,9 @@
 #include "debug.hpp"
 #include "utils.hpp"
 
-#include <iostream>
+#include <algorithm>
 #include <cstring>
+#include <iostream>
 
 const std::vector<const char*> vkpg::Debug::validation_layers =
 {

@@ -5,17 +5,17 @@
 
 #include <iostream>
 
-bool vkpg::Camera::IsMoving()
+bool vkpg::Camera::IsMoving() const
 {
 	return keys.left || keys.right || keys.up || keys.down;
 }
 
-float vkpg::Camera::GetNearClip()
+float vkpg::Camera::GetNearClip() const
 {
 	return z_near;
 }
 
-float vkpg::Camera::GetFarClip()
+float vkpg::Camera::GetFarClip() const
 {
 	return z_far;
 }

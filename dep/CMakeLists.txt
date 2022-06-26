@@ -1,7 +1,11 @@
 include(FetchContent)
 
+set(FETCHCONTENT_QUIET FALSE)
+
+# TODO: move imgui to dep/imgui
 FetchContent_Declare(imgui
   GIT_REPOSITORY "https://github.com/ocornut/imgui"
+  GIT_PROGRESS TRUE
 )
 
 FetchContent_MakeAvailable(imgui)

@@ -5,6 +5,7 @@
 
 #include <iostream>
 #include <set>
+#include <vulkan/vk_enum_string_helper.h>
 
 vkpg::VulkanDevice::VulkanDevice(const VkInstance& instance, VulkanSwapChain& swap_chain, VkSurfaceKHR& surface) :
     instance(instance), swap_chain(swap_chain), surface(surface)
@@ -19,7 +20,7 @@ void vkpg::VulkanDevice::Cleanup()
 
 void vkpg::VulkanDevice::CreateLogicalDevice()
 {
-	auto queue_family_indices = FindQueueFamilies(physical_device);
+	queue_family_indices = FindQueueFamilies(physical_device);
 
 	std::vector<VkDeviceQueueCreateInfo> queue_create_infos;
 	std::set<uint32_t> unique_queue_families =
@@ -45,12 +46,9 @@ void vkpg::VulkanDevice::CreateLogicalDevice()
 
 	VkDeviceCreateInfo create_info{};
 	create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-
 	create_info.pQueueCreateInfos = queue_create_infos.data();
 	create_info.queueCreateInfoCount = static_cast<uint32_t>(queue_create_infos.size());
-
 	create_info.pEnabledFeatures = &device_features;
-
 	create_info.enabledExtensionCount = static_cast<uint32_t>(device_extensions.size());
 	create_info.ppEnabledExtensionNames = device_extensions.data();
 
@@ -174,7 +172,13 @@ void vkpg::VulkanDevice::PickPhysicalDevice()
 	result = vkEnumeratePhysicalDevices(instance, &device_count, physical_devices.data());
 	CheckVkResult(result, "Failed to enumerate physical devices");
 
-	FindQueueFamilies(physical_devices.at(1));
+	std::cout << "Available physical devices: " << std::endl;
+	for(const auto& physical_device : physical_devices)
+	{
+		VkPhysicalDeviceProperties physical_device_properties;
+		vkGetPhysicalDeviceProperties(physical_device, &physical_device_properties);
+		std::cout << "  " << physical_device_properties.deviceName << " - " << string_VkPhysicalDeviceType(physical_device_properties.deviceType) << std::endl;
+	}
 
 	auto it = std::find_if(physical_devices.cbegin(), physical_devices.cend(), [this](const auto& d)
 	{
@@ -186,8 +190,6 @@ void vkpg::VulkanDevice::PickPhysicalDevice()
 		throw std::runtime_error("Failed to find a suitable GPU");
 	}
 	physical_device = *it;
-
-//	physical_device = physical_devices.at(1); // NVidia
 
 	VkPhysicalDeviceProperties physical_device_properties;
 	vkGetPhysicalDeviceProperties(physical_device, &physical_device_properties);

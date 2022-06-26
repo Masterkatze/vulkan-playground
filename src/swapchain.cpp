@@ -3,7 +3,10 @@
 
 #include "stb_image.h"
 
+#include <imgui_impl_vulkan.h>
+
 #include <array>
+#include <numeric>
 
 vkpg::VulkanSwapChain::VulkanSwapChain(VulkanDevice& vulkan_device, VulkanWindow& window, VkSurfaceKHR& surface) :
     vulkan_device(vulkan_device), window(window), surface(surface)
@@ -17,9 +20,9 @@ void vkpg::VulkanSwapChain::Create()
 
 	VkSurfaceFormatKHR surface_format = ChooseSwapSurfaceFormat(swap_chain_support.formats);
 	VkPresentModeKHR present_mode = ChooseSwapPresentMode(swap_chain_support.present_modes);
-	VkExtent2D extent = ChooseSwapExtent(swap_chain_support.capabilities);
+	VkExtent2D new_extent = ChooseSwapExtent(swap_chain_support.capabilities);
 
-	uint32_t image_count = swap_chain_support.capabilities.minImageCount + 1;
+	image_count = swap_chain_support.capabilities.minImageCount + 1;
 	if(swap_chain_support.capabilities.maxImageCount > 0 && image_count > swap_chain_support.capabilities.maxImageCount)
 	{
 		image_count = swap_chain_support.capabilities.maxImageCount;
@@ -32,22 +35,21 @@ void vkpg::VulkanSwapChain::Create()
 	create_info.minImageCount = image_count;
 	create_info.imageFormat = surface_format.format;
 	create_info.imageColorSpace = surface_format.colorSpace;
-	create_info.imageExtent = extent;
+	create_info.imageExtent = new_extent;
 	create_info.imageArrayLayers = 1;
 	create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-	auto queue_family_indices = vulkan_device.FindQueueFamilies(vulkan_device.physical_device);
-	uint32_t queue_family_indices_array[] =
-	{
-	    queue_family_indices.graphics_family.value(),
-	    queue_family_indices.present_family.value()
-	};
+	std::array<uint32_t, 2> queue_family_indices_array
+	{{
+	    vulkan_device.queue_family_indices.graphics_family.value(),
+	    vulkan_device.queue_family_indices.present_family.value()
+	}};
 
-	if(queue_family_indices.graphics_family != queue_family_indices.present_family)
+	if(vulkan_device.queue_family_indices.graphics_family != vulkan_device.queue_family_indices.present_family)
 	{
 		create_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-		create_info.queueFamilyIndexCount = 2;
-		create_info.pQueueFamilyIndices = queue_family_indices_array;
+		create_info.queueFamilyIndexCount = queue_family_indices_array.size();
+		create_info.pQueueFamilyIndices = queue_family_indices_array.data();
 	}
 	else
 	{
@@ -64,11 +66,11 @@ void vkpg::VulkanSwapChain::Create()
 	CheckVkResult(result, "Failed to create swap chain");
 
 	vkGetSwapchainImagesKHR(vulkan_device.logical_device, swap_chain, &image_count, nullptr);
-	swap_chain_images.resize(image_count);
-	vkGetSwapchainImagesKHR(vulkan_device.logical_device, swap_chain, &image_count, swap_chain_images.data());
+	images.resize(image_count);
+	vkGetSwapchainImagesKHR(vulkan_device.logical_device, swap_chain, &image_count, images.data());
 
-	swap_chain_image_format = surface_format.format;
-	swap_chain_extent = extent;
+	image_format = surface_format.format;
+	extent = new_extent;
 
 	msaa_samples = vulkan_device.GetMaxUsableSampleCount();
 }
@@ -83,10 +85,20 @@ void vkpg::VulkanSwapChain::Cleanup()
 	vkDestroyImage(vulkan_device.logical_device, color_image, nullptr);
 	vkFreeMemory(vulkan_device.logical_device, color_image_memory, nullptr);
 
-	for(const auto& framebuffer : swap_chain_framebuffers)
+	for(const auto& framebuffer : ui_framebuffers)
 	{
 		vkDestroyFramebuffer(vulkan_device.logical_device, framebuffer, nullptr);
 	}
+
+	for(const auto& framebuffer : framebuffers)
+	{
+		vkDestroyFramebuffer(vulkan_device.logical_device, framebuffer, nullptr);
+	}
+
+	vkFreeCommandBuffers(vulkan_device.logical_device, ui_command_pool,
+	                     static_cast<uint32_t>(ui_command_buffers.size()), ui_command_buffers.data());
+
+	vkDestroyCommandPool(vulkan_device.logical_device, ui_command_pool, nullptr);
 
 	vkFreeCommandBuffers(vulkan_device.logical_device, command_pool,
 	                     static_cast<uint32_t>(command_buffers.size()), command_buffers.data());
@@ -95,21 +107,24 @@ void vkpg::VulkanSwapChain::Cleanup()
 
 	vkDestroyPipeline(vulkan_device.logical_device, graphics_pipeline, nullptr);
 	vkDestroyPipelineLayout(vulkan_device.logical_device, pipeline_layout, nullptr);
+
+	vkDestroyRenderPass(vulkan_device.logical_device, ui_render_pass, nullptr);
 	vkDestroyRenderPass(vulkan_device.logical_device, render_pass, nullptr);
 
-	for(const auto& image_view : swap_chain_image_views)
+	for(const auto& image_view : image_views)
 	{
 		vkDestroyImageView(vulkan_device.logical_device, image_view, nullptr);
 	}
 
 	vkDestroySwapchainKHR(vulkan_device.logical_device, swap_chain, nullptr);
 
-	for(size_t i = 0; i < swap_chain_images.size(); i++)
+	for(size_t i = 0; i < images.size(); i++)
 	{
 		vkDestroyBuffer(vulkan_device.logical_device, uniform_buffers[i], nullptr);
 		vkFreeMemory(vulkan_device.logical_device, uniform_buffers_memory[i], nullptr);
 	}
 
+	vkDestroyDescriptorPool(vulkan_device.logical_device, ui_descriptor_pool, nullptr);
 	vkDestroyDescriptorPool(vulkan_device.logical_device, descriptor_pool, nullptr);
 
 	vkDestroySampler(vulkan_device.logical_device, texture_sampler, nullptr);
@@ -144,12 +159,15 @@ void vkpg::VulkanSwapChain::Recreate()
 
 	CreateImageViews();
 	CreateRenderPass();
+	CreateUiRenderPass();
 	CreateDescriptorSetLayout();
 	CreateGraphicsPipeline();
 	CreateCommandPool();
+	CreateUiCommandPool();
 	CreateColorResources();
 	CreateDepthResources();
 	CreateFramebuffers();
+	CreateUiFramebuffers();
 	CreateTextureImage();
 	CreateTextureImageView();
 	CreateTextureSampler();
@@ -157,25 +175,27 @@ void vkpg::VulkanSwapChain::Recreate()
 	CreateIndexBuffer();
 	CreateUniformBuffers();
 	CreateDescriptorPool();
+	CreateUiDescriptorPool();
 	CreateDescriptorSets();
 	CreateCommandBuffers();
+	CreateUiCommandBuffers();
+	ImGui_ImplVulkan_SetMinImageCount(2); // TODO: use MAX_FRAMES_IN_FLIGHT?
 }
 
 void vkpg::VulkanSwapChain::CreateImageViews()
 {
-	swap_chain_image_views.resize(swap_chain_images.size());
+	image_views.resize(images.size());
 
-	for(size_t i = 0; i < swap_chain_images.size(); i++)
+	for(size_t i = 0; i < images.size(); i++)
 	{
-		swap_chain_image_views[i] = CreateImageView(swap_chain_images[i], swap_chain_image_format,
-		                                            VK_IMAGE_ASPECT_COLOR_BIT, 1);
+		image_views[i] = CreateImageView(images[i], image_format, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 	}
 }
 
 void vkpg::VulkanSwapChain::CreateRenderPass()
 {
 	VkAttachmentDescription color_attachment{};
-	color_attachment.format = swap_chain_image_format;
+	color_attachment.format = image_format;
 	color_attachment.samples = msaa_samples;
 	color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -203,7 +223,7 @@ void vkpg::VulkanSwapChain::CreateRenderPass()
 	depth_attachment_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 	VkAttachmentDescription color_attachment_resolve{};
-	color_attachment_resolve.format = swap_chain_image_format;
+	color_attachment_resolve.format = image_format;
 	color_attachment_resolve.samples = VK_SAMPLE_COUNT_1_BIT;
 	color_attachment_resolve.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	color_attachment_resolve.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -232,6 +252,7 @@ void vkpg::VulkanSwapChain::CreateRenderPass()
 	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
 	std::array<VkAttachmentDescription, 3> attachments = {color_attachment, depth_attachment, color_attachment_resolve};
+
 	VkRenderPassCreateInfo render_pass_info{};
 	render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 	render_pass_info.attachmentCount = static_cast<uint32_t>(attachments.size());
@@ -243,6 +264,48 @@ void vkpg::VulkanSwapChain::CreateRenderPass()
 
 	auto result = vkCreateRenderPass(vulkan_device.logical_device, &render_pass_info, nullptr, &render_pass);
 	CheckVkResult(result, "Failed to create render pass");
+}
+
+void vkpg::VulkanSwapChain::CreateUiRenderPass()
+{
+	VkAttachmentDescription color_attachment{};
+	color_attachment.format = image_format;
+	color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+	color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	color_attachment.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	color_attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+	VkAttachmentReference color_attachment_ref{};
+	color_attachment_ref.attachment = 0;
+	color_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	VkSubpassDescription subpass{};
+	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+	subpass.colorAttachmentCount = 1;
+	subpass.pColorAttachments = &color_attachment_ref;
+
+	VkSubpassDependency dependency{};
+	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+	dependency.dstSubpass = 0;
+	dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	dependency.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+	VkRenderPassCreateInfo render_pass_info{};
+	render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	render_pass_info.attachmentCount = 1;
+	render_pass_info.pAttachments = &color_attachment;
+	render_pass_info.subpassCount = 1;
+	render_pass_info.pSubpasses = &subpass;
+	render_pass_info.dependencyCount = 1;
+	render_pass_info.pDependencies = &dependency;
+
+	auto result = vkCreateRenderPass(vulkan_device.logical_device, &render_pass_info, nullptr, &ui_render_pass);
+	CheckVkResult(result, "Failed to create ui render pass");
 }
 
 void vkpg::VulkanSwapChain::CreateGraphicsPipeline()
@@ -285,14 +348,14 @@ void vkpg::VulkanSwapChain::CreateGraphicsPipeline()
 	VkViewport viewport{};
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
-	viewport.width = static_cast<float>(swap_chain_extent.width);
-	viewport.height = static_cast<float>(swap_chain_extent.height);
+	viewport.width = static_cast<float>(extent.width);
+	viewport.height = static_cast<float>(extent.height);
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
 
 	VkRect2D scissor{};
 	scissor.offset = {0, 0};
-	scissor.extent = swap_chain_extent;
+	scissor.extent = extent;
 
 	VkPipelineViewportStateCreateInfo viewport_state{};
 	viewport_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -367,8 +430,7 @@ void vkpg::VulkanSwapChain::CreateGraphicsPipeline()
 	pipeline_info.subpass = 0;
 	pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
 
-	result = vkCreateGraphicsPipelines(vulkan_device.logical_device, VK_NULL_HANDLE, 1,
-	                                   &pipeline_info, nullptr, &graphics_pipeline);
+	result = vkCreateGraphicsPipelines(vulkan_device.logical_device, pipeline_cache, 1, &pipeline_info, nullptr, &graphics_pipeline);
 
 	CheckVkResult(result, "Failed to create graphics pipeline");
 
@@ -378,37 +440,41 @@ void vkpg::VulkanSwapChain::CreateGraphicsPipeline()
 
 void vkpg::VulkanSwapChain::CreateColorResources()
 {
-	VkFormat color_format = swap_chain_image_format;
+	VkFormat color_format = image_format;
 
-	CreateImage(swap_chain_extent.width, swap_chain_extent.height, 1, msaa_samples, color_format, VK_IMAGE_TILING_OPTIMAL,
+	CreateImage(extent.width, extent.height, 1, msaa_samples, color_format, VK_IMAGE_TILING_OPTIMAL,
 	            VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
 	            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, color_image, color_image_memory);
 
 	color_image_view = CreateImageView(color_image, color_format, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+
+	//ui_color_image_view = CreateImageView(ui_color_image, color_format, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 }
 
 void vkpg::VulkanSwapChain::CreateDepthResources()
 {
 	VkFormat depth_format = FindDepthFormat();
 
-	CreateImage(swap_chain_extent.width, swap_chain_extent.height, 1, msaa_samples,
+	CreateImage(extent.width, extent.height, 1, msaa_samples,
 	            depth_format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
 	            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depth_image, depth_image_memory);
 
 	depth_image_view = CreateImageView(depth_image, depth_format, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
+
+	//ui_depth_image_view = CreateImageView(ui_depth_image, depth_format, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
 }
 
 void vkpg::VulkanSwapChain::CreateFramebuffers()
 {
-	swap_chain_framebuffers.resize(swap_chain_image_views.size());
+	framebuffers.resize(image_views.size());
 
-	for(size_t i = 0; i < swap_chain_image_views.size(); i++)
+	for(size_t i = 0; i < image_views.size(); i++)
 	{
 		std::array<VkImageView, 3> attachments =
 		{
 			color_image_view,
 			depth_image_view,
-			swap_chain_image_views[i]
+			image_views[i]
 		};
 
 		VkFramebufferCreateInfo framebuffer_info{};
@@ -416,14 +482,39 @@ void vkpg::VulkanSwapChain::CreateFramebuffers()
 		framebuffer_info.renderPass = render_pass;
 		framebuffer_info.attachmentCount = static_cast<uint32_t>(attachments.size());
 		framebuffer_info.pAttachments = attachments.data();
-		framebuffer_info.width = swap_chain_extent.width;
-		framebuffer_info.height = swap_chain_extent.height;
+		framebuffer_info.width = extent.width;
+		framebuffer_info.height = extent.height;
 		framebuffer_info.layers = 1;
 
-		auto result = vkCreateFramebuffer(vulkan_device.logical_device, &framebuffer_info,
-		                                  nullptr, &swap_chain_framebuffers[i]);
+		auto result = vkCreateFramebuffer(vulkan_device.logical_device, &framebuffer_info, nullptr, &framebuffers[i]);
 
 		CheckVkResult(result, "Failed to create framebuffer");
+	}
+}
+
+void vkpg::VulkanSwapChain::CreateUiFramebuffers()
+{
+	ui_framebuffers.resize(image_views.size());
+
+	for(size_t i = 0; i < image_views.size(); i++)
+	{
+		std::array<VkImageView, 1> attachments =
+		{
+			image_views[i]
+		};
+
+		VkFramebufferCreateInfo framebuffer_info{};
+		framebuffer_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		framebuffer_info.renderPass = ui_render_pass;
+		framebuffer_info.attachmentCount = static_cast<uint32_t>(attachments.size());
+		framebuffer_info.pAttachments = attachments.data();
+		framebuffer_info.width = extent.width;
+		framebuffer_info.height = extent.height;
+		framebuffer_info.layers = 1;
+
+		auto result = vkCreateFramebuffer(vulkan_device.logical_device, &framebuffer_info, nullptr, &ui_framebuffers[i]);
+
+		CheckVkResult(result, "Failed to create ui framebuffer");
 	}
 }
 
@@ -431,10 +522,10 @@ void vkpg::VulkanSwapChain::CreateUniformBuffers()
 {
 	VkDeviceSize buffer_size = sizeof(UniformBufferObject);
 
-	uniform_buffers.resize(swap_chain_images.size());
-	uniform_buffers_memory.resize(swap_chain_images.size());
+	uniform_buffers.resize(images.size());
+	uniform_buffers_memory.resize(images.size());
 
-	for(size_t i = 0; i < swap_chain_images.size(); i++)
+	for(size_t i = 0; i < images.size(); i++)
 	{
 		vulkan_device.CreateBuffer(buffer_size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 		                           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
@@ -444,36 +535,75 @@ void vkpg::VulkanSwapChain::CreateUniformBuffers()
 
 void vkpg::VulkanSwapChain::CreateDescriptorPool()
 {
-	std::array<VkDescriptorPoolSize, 2> pool_sizes{};
-	pool_sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	pool_sizes[0].descriptorCount = static_cast<uint32_t>(swap_chain_images.size());
-	pool_sizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	pool_sizes[1].descriptorCount = static_cast<uint32_t>(swap_chain_images.size());
+	std::array<VkDescriptorPoolSize, 2> pool_sizes
+	{{
+		{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, static_cast<uint32_t>(images.size())},
+		{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, static_cast<uint32_t>(images.size())}
+	}};
 
 	VkDescriptorPoolCreateInfo pool_info{};
 	pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	pool_info.poolSizeCount = static_cast<uint32_t>(pool_sizes.size());
 	pool_info.pPoolSizes = pool_sizes.data();
-	pool_info.maxSets = static_cast<uint32_t>(swap_chain_images.size());
+	pool_info.maxSets = std::accumulate(pool_sizes.cbegin(), pool_sizes.cend(), 0, [](int total_size, const VkDescriptorPoolSize& size_entry)
+	{
+		return total_size + size_entry.descriptorCount;
+	});
 
 	auto result = vkCreateDescriptorPool(vulkan_device.logical_device, &pool_info, nullptr, &descriptor_pool);
 	CheckVkResult(result, "Failed to create descriptor pool");
 }
 
+void vkpg::VulkanSwapChain::CreateUiDescriptorPool()
+{
+//	std::array<VkDescriptorPoolSize, 11> pool_sizes
+//	{{
+//	    {VK_DESCRIPTOR_TYPE_SAMPLER, 1000},
+//	    {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000},
+//		{VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000},
+//		{VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000},
+//		{VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000},
+//		{VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000},
+//		{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000},
+//		{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000},
+//		{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000},
+//		{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000},
+//		{VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000}
+//	}};
+
+	std::array<VkDescriptorPoolSize, 2> pool_sizes
+	{{
+		{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, static_cast<uint32_t>(images.size())},
+		{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, static_cast<uint32_t>(images.size())}
+	}};
+
+	VkDescriptorPoolCreateInfo pool_info{};
+	pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	pool_info.poolSizeCount = static_cast<uint32_t>(pool_sizes.size());
+	pool_info.pPoolSizes = pool_sizes.data();
+	pool_info.maxSets = std::accumulate(pool_sizes.cbegin(), pool_sizes.cend(), 0, [](int total_size, const VkDescriptorPoolSize& size_entry)
+	{
+		return total_size + size_entry.descriptorCount;
+	});
+
+	auto result = vkCreateDescriptorPool(vulkan_device.logical_device, &pool_info, nullptr, &ui_descriptor_pool);
+	CheckVkResult(result, "Failed to create descriptor pool");
+}
+
 void vkpg::VulkanSwapChain::CreateDescriptorSets()
 {
-	std::vector<VkDescriptorSetLayout> layouts(swap_chain_images.size(), descriptor_set_layout);
+	std::vector<VkDescriptorSetLayout> layouts(images.size(), descriptor_set_layout);
 	VkDescriptorSetAllocateInfo alloc_info{};
 	alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 	alloc_info.descriptorPool = descriptor_pool;
-	alloc_info.descriptorSetCount = static_cast<uint32_t>(swap_chain_images.size());
+	alloc_info.descriptorSetCount = static_cast<uint32_t>(images.size());
 	alloc_info.pSetLayouts = layouts.data();
 
-	descriptor_sets.resize(swap_chain_images.size());
+	descriptor_sets.resize(images.size());
 	auto result = vkAllocateDescriptorSets(vulkan_device.logical_device, &alloc_info, descriptor_sets.data());
 	CheckVkResult(result, "Failed to allocate descriptor sets");
 
-	for(size_t i = 0; i < swap_chain_images.size(); i++)
+	for(size_t i = 0; i < images.size(); i++)
 	{
 		VkDescriptorBufferInfo buffer_info{};
 		buffer_info.buffer = uniform_buffers[i];
@@ -510,7 +640,7 @@ void vkpg::VulkanSwapChain::CreateDescriptorSets()
 
 void vkpg::VulkanSwapChain::CreateCommandBuffers()
 {
-	command_buffers.resize(swap_chain_framebuffers.size());
+	command_buffers.resize(framebuffers.size());
 
 	VkCommandBufferAllocateInfo alloc_info{};
 	alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -521,6 +651,7 @@ void vkpg::VulkanSwapChain::CreateCommandBuffers()
 	auto result = vkAllocateCommandBuffers(vulkan_device.logical_device, &alloc_info, command_buffers.data());
 	CheckVkResult(result, "Failed to allocate command buffers");
 
+	// TODO: why is it here?
 	for(size_t i = 0; i < command_buffers.size(); i++)
 	{
 		VkCommandBufferBeginInfo begin_info{};
@@ -536,9 +667,9 @@ void vkpg::VulkanSwapChain::CreateCommandBuffers()
 		VkRenderPassBeginInfo render_pass_info{};
 		render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		render_pass_info.renderPass = render_pass;
-		render_pass_info.framebuffer = swap_chain_framebuffers[i];
+		render_pass_info.framebuffer = framebuffers[i];
 		render_pass_info.renderArea.offset = {0, 0};
-		render_pass_info.renderArea.extent = swap_chain_extent;
+		render_pass_info.renderArea.extent = extent;
 		render_pass_info.clearValueCount = static_cast<uint32_t>(clear_values.size());
 		render_pass_info.pClearValues = clear_values.data();
 
@@ -550,8 +681,7 @@ void vkpg::VulkanSwapChain::CreateCommandBuffers()
 		VkDeviceSize offsets[] = {0};
 		vkCmdBindVertexBuffers(command_buffers[i], 0, 1, vertex_buffers, offsets);
 		vkCmdBindIndexBuffer(command_buffers[i], index_buffer, 0, VK_INDEX_TYPE_UINT32);
-		vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS,
-		                        pipeline_layout, 0, 1, &descriptor_sets[i], 0, nullptr);
+		vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, 1, &descriptor_sets[i], 0, nullptr);
 		vkCmdDrawIndexed(command_buffers[i], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 
 		vkCmdEndRenderPass(command_buffers[i]);
@@ -559,6 +689,19 @@ void vkpg::VulkanSwapChain::CreateCommandBuffers()
 		result = vkEndCommandBuffer(command_buffers[i]);
 		CheckVkResult(result, "Failed to record command buffer");
 	}
+}
+
+void vkpg::VulkanSwapChain::CreateUiCommandBuffers()
+{
+	ui_command_buffers.resize(ui_framebuffers.size());
+	VkCommandBufferAllocateInfo ui_alloc_info{};
+	ui_alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	ui_alloc_info.commandPool = ui_command_pool;
+	ui_alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	ui_alloc_info.commandBufferCount = static_cast<uint32_t>(ui_command_buffers.size());
+
+	auto result = vkAllocateCommandBuffers(vulkan_device.logical_device, &ui_alloc_info, ui_command_buffers.data());
+	CheckVkResult(result, "Failed to allocate ui command buffers");
 }
 
 void vkpg::VulkanSwapChain::CreateVertexBuffer()
@@ -573,14 +716,23 @@ void vkpg::VulkanSwapChain::CreateIndexBuffer()
 
 void vkpg::VulkanSwapChain::CreateCommandPool()
 {
-	auto queue_family_indices = vulkan_device.FindQueueFamilies(vulkan_device.physical_device);
-
 	VkCommandPoolCreateInfo pool_info{};
 	pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-	pool_info.queueFamilyIndex = queue_family_indices.graphics_family.value();
+	pool_info.queueFamilyIndex = vulkan_device.queue_family_indices.graphics_family.value();
 
 	auto result = vkCreateCommandPool(vulkan_device.logical_device, &pool_info, nullptr, &command_pool);
 	CheckVkResult(result, "Failed to create command pool");
+}
+
+void vkpg::VulkanSwapChain::CreateUiCommandPool()
+{
+	VkCommandPoolCreateInfo ui_pool_info{};
+	ui_pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	ui_pool_info.queueFamilyIndex = vulkan_device.queue_family_indices.graphics_family.value();
+	ui_pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+
+	auto result = vkCreateCommandPool(vulkan_device.logical_device, &ui_pool_info, nullptr, &ui_command_pool);
+	CheckVkResult(result, "Failed to create ui command pool");
 }
 
 void vkpg::VulkanSwapChain::CreateDescriptorSetLayout()
@@ -733,24 +885,22 @@ VkExtent2D vkpg::VulkanSwapChain::ChooseSwapExtent(const VkSurfaceCapabilitiesKH
 	{
 		return capabilities.currentExtent;
 	}
-	else
+
+	int width, height;
+	window.GetFramebufferSize(width, height);
+
+	VkExtent2D actual_extent =
 	{
-		int width, height;
-		window.GetFramebufferSize(width, height);
+		static_cast<uint32_t>(width),
+		static_cast<uint32_t>(height)
+	};
 
-		VkExtent2D actual_extent =
-		{
-			static_cast<uint32_t>(width),
-			static_cast<uint32_t>(height)
-		};
+	actual_extent.width  = std::max(capabilities.minImageExtent.width,
+									std::min(capabilities.maxImageExtent.width, actual_extent.width));
+	actual_extent.height = std::max(capabilities.minImageExtent.height,
+									std::min(capabilities.maxImageExtent.height, actual_extent.height));
 
-		actual_extent.width  = std::max(capabilities.minImageExtent.width,
-		                                std::min(capabilities.maxImageExtent.width, actual_extent.width));
-		actual_extent.height = std::max(capabilities.minImageExtent.height,
-		                                std::min(capabilities.maxImageExtent.height, actual_extent.height));
-
-		return actual_extent;
-	}
+	return actual_extent;
 }
 
 VkShaderModule vkpg::VulkanSwapChain::CreateShaderModule(const std::vector<char>& code)
@@ -848,12 +998,12 @@ void vkpg::VulkanSwapChain::CreateImage(uint32_t width, uint32_t height, uint32_
 	vkBindImageMemory(vulkan_device.logical_device, image, image_memory, 0);
 }
 
-VkCommandBuffer vkpg::VulkanSwapChain::BeginSingleTimeCommands()
+VkCommandBuffer vkpg::VulkanSwapChain::BeginSingleTimeCommands(VkCommandPool pool)
 {
 	VkCommandBufferAllocateInfo alloc_info{};
 	alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	alloc_info.commandPool = command_pool;
+	alloc_info.commandPool = pool;
 	alloc_info.commandBufferCount = 1;
 
 	VkCommandBuffer command_buffer;
@@ -868,7 +1018,7 @@ VkCommandBuffer vkpg::VulkanSwapChain::BeginSingleTimeCommands()
 	return command_buffer;
 }
 
-void vkpg::VulkanSwapChain::EndSingleTimeCommands(VkCommandBuffer command_buffer)
+void vkpg::VulkanSwapChain::EndSingleTimeCommands(VkCommandPool pool, VkCommandBuffer command_buffer)
 {
 	vkEndCommandBuffer(command_buffer);
 
@@ -880,24 +1030,24 @@ void vkpg::VulkanSwapChain::EndSingleTimeCommands(VkCommandBuffer command_buffer
 	vkQueueSubmit(graphics_queue, 1, &submit_info, VK_NULL_HANDLE);
 	vkQueueWaitIdle(graphics_queue);
 
-	vkFreeCommandBuffers(vulkan_device.logical_device, command_pool, 1, &command_buffer);
+	vkFreeCommandBuffers(vulkan_device.logical_device, pool, 1, &command_buffer);
 }
 
 void vkpg::VulkanSwapChain::CopyBuffer(VkBuffer source, VkBuffer destination, VkDeviceSize size)
 {
-	VkCommandBuffer command_buffer = BeginSingleTimeCommands();
+	VkCommandBuffer command_buffer = BeginSingleTimeCommands(command_pool);
 
 	VkBufferCopy copyRegion{};
 	copyRegion.size = size;
 	vkCmdCopyBuffer(command_buffer, source, destination, 1, &copyRegion);
 
-	EndSingleTimeCommands(command_buffer);
+	EndSingleTimeCommands(command_pool, command_buffer);
 }
 
 void vkpg::VulkanSwapChain::TransitionImageLayout(VkImage image, VkImageLayout old_layout,
                                                   VkImageLayout new_layout, uint32_t mip_levels)
 {
-	VkCommandBuffer command_buffer = BeginSingleTimeCommands();
+	VkCommandBuffer command_buffer = BeginSingleTimeCommands(command_pool);
 
 	VkImageMemoryBarrier barrier{};
 	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -939,12 +1089,12 @@ void vkpg::VulkanSwapChain::TransitionImageLayout(VkImage image, VkImageLayout o
 
 	vkCmdPipelineBarrier(command_buffer, source_stage, destination_stage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 
-	EndSingleTimeCommands(command_buffer);
+	EndSingleTimeCommands(command_pool, command_buffer);
 }
 
 void vkpg::VulkanSwapChain::CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height)
 {
-	VkCommandBuffer command_buffer = BeginSingleTimeCommands();
+	VkCommandBuffer command_buffer = BeginSingleTimeCommands(command_pool);
 
 	VkBufferImageCopy region{};
 	region.bufferOffset = 0;
@@ -959,7 +1109,7 @@ void vkpg::VulkanSwapChain::CopyBufferToImage(VkBuffer buffer, VkImage image, ui
 
 	vkCmdCopyBufferToImage(command_buffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
-	EndSingleTimeCommands(command_buffer);
+	EndSingleTimeCommands(command_pool, command_buffer);
 }
 
 void vkpg::VulkanSwapChain::GenerateMipmaps(VkImage image, VkFormat image_format,
@@ -974,7 +1124,7 @@ void vkpg::VulkanSwapChain::GenerateMipmaps(VkImage image, VkFormat image_format
 		throw std::runtime_error("texture image format does not support linear blitting");
 	}
 
-	VkCommandBuffer command_buffer = BeginSingleTimeCommands();
+	VkCommandBuffer command_buffer = BeginSingleTimeCommands(command_pool);
 
 	VkImageMemoryBarrier barrier{};
 	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -1050,5 +1200,5 @@ void vkpg::VulkanSwapChain::GenerateMipmaps(VkImage image, VkFormat image_format
 	                     0, nullptr,
 	                     1, &barrier);
 
-	EndSingleTimeCommands(command_buffer);
+	EndSingleTimeCommands(command_pool, command_buffer);
 }

@@ -1,7 +1,9 @@
 #include "window.hpp"
-#include "utils.hpp"
-#include "swapchain.hpp"
+
 #include "debug.hpp"
+#include "swapchain.hpp"
+#include "utils.hpp"
+#include <iostream>
 
 vkpg::VulkanWindow::FramebufferResizeCallbackFunction vkpg::VulkanWindow::framebuffer_resize_callback;
 vkpg::VulkanWindow::KeyCallbackFunction vkpg::VulkanWindow::key_callback;
@@ -12,14 +14,34 @@ vkpg::VulkanWindow::VulkanWindow(VulkanSwapChain& swap_chain, VkSurfaceKHR& surf
 {
 }
 
+void error_callback(int code, const char* description)
+{
+    std::cout << "code=" << code << " description=" << description << std::endl;
+}
+
 void vkpg::VulkanWindow::Init()
 {
-	glfwInit();
+	if(glfwInit() == GLFW_FALSE)
+	{
+		Error("Failed to init glfw");
+	}
+
+	glfwSetErrorCallback(error_callback);
+
+	if(glfwVulkanSupported() == GLFW_FALSE)
+	{
+		Error("Vulkan is not supported");
+	}
 
 	// Don't create an OpenGL context
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-	window = glfwCreateWindow(width, height, "Vulkan", nullptr, nullptr);
+	window = glfwCreateWindow(width, height, "Vulkan Playground", nullptr, nullptr);
+	if(window == nullptr)
+	{
+		glfwError("Failed to create glfw window");
+	}
+
 	glfwSetWindowUserPointer(window, this);
 
 	glfwSetFramebufferSizeCallback(window, FramebufferResizeCallback);
@@ -38,7 +60,11 @@ void vkpg::VulkanWindow::Init()
 void vkpg::VulkanWindow::CreateSurface()
 {
 	auto result = glfwCreateWindowSurface(instance, window, nullptr, &surface);
-	CheckVkResult(result, "Failed to create window surface");
+	if(result != VK_SUCCESS)
+	{
+		// TODO: print result too
+		glfwError("Failed to create glfw window surface");
+	}
 }
 
 void vkpg::VulkanWindow::Cleanup()
@@ -57,29 +83,29 @@ void vkpg::VulkanWindow::PollEvents()
 	glfwPollEvents();
 }
 
-void vkpg::VulkanWindow::GetFramebufferSize(int& width, int& height)
+void vkpg::VulkanWindow::GetFramebufferSize(int& width, int& height) const
 {
 	glfwGetFramebufferSize(window, &width, &height);
 }
 
 void vkpg::VulkanWindow::SetFramebufferResizeCallback(std::function<void(void*, int, int)> callback)
 {
-	framebuffer_resize_callback = callback;
+	framebuffer_resize_callback = std::move(callback);
 }
 
 void vkpg::VulkanWindow::SetKeyCallback(std::function<void(void*, int, int, int, int)> callback)
 {
-	key_callback = callback;
+	key_callback = std::move(callback);
 }
 
 void vkpg::VulkanWindow::SetMouseButtonCallback(std::function<void(void*, int, int, int)> callback)
 {
-	mouse_button_callback = callback;
+	mouse_button_callback = std::move(callback);
 }
 
 void vkpg::VulkanWindow::SetCursorPositionCallback(std::function<void(void*, int, int)> callback)
 {
-	cursor_position_callback = callback;
+	cursor_position_callback = std::move(callback);
 }
 
 void vkpg::VulkanWindow::FramebufferResizeCallback(GLFWwindow* window, int width, int height)
@@ -109,6 +135,11 @@ std::vector<const char*> vkpg::VulkanWindow::GetRequiredExtensions()
 {
 	uint32_t glfw_extension_count = 0;
 	auto glfw_extensions = glfwGetRequiredInstanceExtensions(&glfw_extension_count);
+	if(glfw_extensions == nullptr)
+	{
+		// TODO: print result too
+		glfwError("Failed to get glfw required instance extensions");
+	}
 
 	std::vector<const char*> extensions(glfw_extensions, glfw_extensions + glfw_extension_count);
 
@@ -118,4 +149,9 @@ std::vector<const char*> vkpg::VulkanWindow::GetRequiredExtensions()
 	}
 
 	return extensions;
+}
+
+GLFWwindow* vkpg::VulkanWindow::GetNativeHandler()
+{
+	return window;
 }
