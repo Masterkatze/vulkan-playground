@@ -19,7 +19,7 @@ struct UniformBufferObject
 	alignas(16) glm::mat4 model;
 	alignas(16) glm::mat4 view;
 	alignas(16) glm::mat4 projection;
-	alignas(16) glm::vec4 camera_position;
+	//alignas(16) glm::vec4 camera_position;
 };
 
 struct Vertex
@@ -65,7 +65,7 @@ struct Vertex
 	}
 };
 
-}
+} // namespace vkpg
 
 namespace std {
 template<> struct hash<vkpg::Vertex>
@@ -75,7 +75,7 @@ template<> struct hash<vkpg::Vertex>
 			return ((hash<glm::vec3>()(vertex.position) ^ (hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^ (hash<glm::vec2>()(vertex.texture_coordinates) << 1);
 		}
 	};
-}
+} // namespace std
 
 namespace vkpg
 {

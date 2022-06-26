@@ -72,10 +72,12 @@ void vkpg::Events::CursorPositionCallback(void *window, double x, double y)
 	}
 	if(mouse_buttons.right)
 	{
-        camera.Translate(glm::vec3(0.0f, dy * .005f, dx * .005f));
+        //camera.Translate(glm::vec3(0.0f, dy * 0.005f, dx * 0.005f));
+		camera.Translate(glm::vec3(-0.0f, 0.0f, dy * .005f));
 	}
 	if(mouse_buttons.middle)
 	{
+		//camera.Translate(glm::vec3(-dx * 0.01f, -dy * 0.01f, 0.0f));
 		camera.Translate(glm::vec3(-dx * 0.01f, -dy * 0.01f, 0.0f));
 	}
 

@@ -13,15 +13,14 @@ public:
 	enum CameraType { lookat, firstperson };
 	CameraType type = CameraType::firstperson;
 
-    glm::vec3 rotation{};
 	glm::vec3 position{};
-	glm::vec4 view_position{};
+	glm::vec3 rotation{};
 
 	float rotation_speed = 1.0f;
 	float movement_speed = 0.8f;
 
 	bool updated = false;
-	bool flip_y = true;
+	bool flip_y = false;
 
 	struct
 	{
@@ -50,8 +49,6 @@ public:
 	void SetRotation(glm::vec3 rotation);
 
 	void Rotate(glm::vec3 delta);
-
-	void SetTranslation(glm::vec3 translation);
 	void Translate(glm::vec3 delta);
 
 	void SetRotationSpeed(float rotation_speed);
@@ -66,4 +63,4 @@ private:
 	void UpdateViewMatrix();
 };
 
-}
+} // namespace vkpg

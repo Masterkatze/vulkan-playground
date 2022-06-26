@@ -172,28 +172,126 @@ private:
 	void MainLoop()
 	{
 		camera.type = vkpg::Camera::CameraType::firstperson;
-		camera.SetPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+		camera.SetPosition(glm::vec3(1.0f, 0.75f, 0.0f));
 
-		camera.SetRotation(glm::vec3(0.0f, 0.0f, 0.0f));
+		camera.SetRotation(glm::vec3(0.0f, 90.0f, 0.0f));
 		camera.SetPerspective(90.0f, static_cast<float>(swap_chain.extent.width) / static_cast<float>(swap_chain.extent.height), 0.1f, 256.0f);
-		camera.SetMovementSpeed(0.01f);
+		camera.SetMovementSpeed(0.02f);
 
 		auto time_last = std::chrono::high_resolution_clock::now();
 		while(!window.ShouldClose())
 		{
-			auto time_now = std::chrono::high_resolution_clock::now();
-			auto delta_time = std::chrono::duration_cast<std::chrono::milliseconds>(time_last - time_now);
-
 			window.PollEvents();
-			camera.Update(delta_time);
 
 			ImGui_ImplGlfw_NewFrame();
 			ImGui_ImplVulkan_NewFrame();
 			ImGui::NewFrame();
 
-			ImGui::ShowDemoWindow();
+			//ImGui::ShowDemoWindow();
+
+			ImGui::SetNextWindowSize(ImVec2(400, 80), ImGuiCond_FirstUseEver);
+			ImGui::Begin("Camera");
+
+			float rotation[3] = { camera.rotation.x, camera.rotation.y, camera.rotation.z };
+			ImGui::InputFloat3("Rotation", rotation);
+			camera.SetRotation({rotation[0], rotation[1], rotation[2]});
+
+			float position[3] = { camera.position.x, camera.position.y, camera.position.z };
+			ImGui::InputFloat3("Position", position);
+			camera.SetPosition({position[0], position[1], position[2]});
+
+			{
+				ImGui::Text("Perspective");
+
+				float matrices_perspective_0[4] =
+				{
+					camera.matrices.perspective[0][0],
+					camera.matrices.perspective[0][1],
+					camera.matrices.perspective[0][2],
+					camera.matrices.perspective[0][3]
+				};
+				ImGui::InputFloat4("", matrices_perspective_0);
+				camera.matrices.perspective[0][0] = matrices_perspective_0[0];
+				camera.matrices.perspective[0][1] = matrices_perspective_0[1];
+				camera.matrices.perspective[0][2] = matrices_perspective_0[2];
+				camera.matrices.perspective[0][3] = matrices_perspective_0[3];
+
+				float matrices_perspective_1[4] =
+				{
+					camera.matrices.perspective[1][0],
+					camera.matrices.perspective[1][1],
+					camera.matrices.perspective[1][2],
+					camera.matrices.perspective[1][3]
+				};
+				ImGui::InputFloat4("", matrices_perspective_1);
+
+				float matrices_perspective_2[4] =
+				{
+					camera.matrices.perspective[2][0],
+					camera.matrices.perspective[2][1],
+					camera.matrices.perspective[2][2],
+					camera.matrices.perspective[2][3]
+				};
+				ImGui::InputFloat4("", matrices_perspective_2);
+
+				float matrices_perspective_3[4] =
+				{
+					camera.matrices.perspective[3][0],
+					camera.matrices.perspective[3][1],
+					camera.matrices.perspective[3][2],
+					camera.matrices.perspective[3][3]
+				};
+				ImGui::InputFloat4("", matrices_perspective_3);
+			}
+
+			{
+				ImGui::Text("View");
+
+				float matrices_view_0[4] =
+				{
+					camera.matrices.view[0][0],
+					camera.matrices.view[0][1],
+					camera.matrices.view[0][2],
+					camera.matrices.view[0][3]
+				};
+				ImGui::InputFloat4("", matrices_view_0);
+
+				float matrices_view_1[4] =
+				{
+					camera.matrices.view[1][0],
+					camera.matrices.view[1][1],
+					camera.matrices.view[1][2],
+					camera.matrices.view[1][3]
+				};
+				ImGui::InputFloat4("", matrices_view_1);
+
+				float matrices_view_2[4] =
+				{
+					camera.matrices.view[2][0],
+					camera.matrices.view[2][1],
+					camera.matrices.view[2][2],
+					camera.matrices.view[2][3]
+				};
+				ImGui::InputFloat4("", matrices_view_2);
+
+				float matrices_view_3[4] =
+				{
+					camera.matrices.view[3][0],
+					camera.matrices.view[3][1],
+					camera.matrices.view[3][2],
+					camera.matrices.view[3][3]
+				};
+				ImGui::InputFloat4("", matrices_view_3);
+			}
+
+			ImGui::End();
+
 
 			ImGui::Render();
+
+			auto time_now = std::chrono::high_resolution_clock::now();
+			auto delta_time = std::chrono::duration_cast<std::chrono::milliseconds>(time_last - time_now);
+			camera.Update(delta_time);
 
 			DrawFrame();
 		}
@@ -387,9 +485,9 @@ private:
 
 	void UpdateUniformBuffer(uint32_t current_image)
 	{
-        static auto start_time = std::chrono::high_resolution_clock::now();
-        auto current_time = std::chrono::high_resolution_clock::now();
-        float time = std::chrono::duration<float, std::chrono::seconds::period>(current_time - start_time).count();
+        //static auto start_time = std::chrono::high_resolution_clock::now();
+        //auto current_time = std::chrono::high_resolution_clock::now();
+        //float time = std::chrono::duration<float, std::chrono::seconds::period>(current_time - start_time).count();
 
         vkpg::UniformBufferObject ubo{};
 		ubo.model = glm::mat4(1.0f);

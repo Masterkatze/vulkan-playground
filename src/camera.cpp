@@ -59,12 +59,6 @@ void vkpg::Camera::Rotate(glm::vec3 delta)
 	UpdateViewMatrix();
 }
 
-void vkpg::Camera::SetTranslation(glm::vec3 translation)
-{
-	this->position = translation;
-	UpdateViewMatrix();
-};
-
 void vkpg::Camera::Translate(glm::vec3 delta)
 {
 	this->position += delta;
@@ -131,10 +125,6 @@ void vkpg::Camera::UpdateViewMatrix()
     rotM = glm::rotate(rotM, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
     rotM = glm::rotate(rotM, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
 
-    //rotM = glm::rotate(rotM, glm::radians(0.0f * (flip_y ? -1.0f : 1.0f)), glm::vec3(1.0f, 0.0f, 0.0f));
-    //rotM = glm::rotate(rotM, glm::radians(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    //rotM = glm::rotate(rotM, glm::radians(0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-
     glm::vec3 translation = position;
     if(flip_y)
     {
@@ -150,8 +140,6 @@ void vkpg::Camera::UpdateViewMatrix()
     {
         matrices.view = transM * rotM;
     }
-
-    //view_position = glm::vec4(position, 0.0f) * glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
 
     updated = true;
 };

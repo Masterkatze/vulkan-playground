@@ -230,7 +230,7 @@ void vkpg::VulkanSwapChain::CreateRenderPass()
 	color_attachment_resolve.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	color_attachment_resolve.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	color_attachment_resolve.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	color_attachment_resolve.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	color_attachment_resolve.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 	VkAttachmentReference color_attachment_resolve_ref{};
 	color_attachment_resolve_ref.attachment = 2;
@@ -328,7 +328,7 @@ void vkpg::VulkanSwapChain::CreateGraphicsPipeline()
 	frag_shader_stage_info.module = frag_shader_module;
 	frag_shader_stage_info.pName = "main";
 
-	VkPipelineShaderStageCreateInfo shader_stages[] = {vert_shader_stage_info, frag_shader_stage_info};
+	std::array<VkPipelineShaderStageCreateInfo, 2> shader_stages{{vert_shader_stage_info, frag_shader_stage_info}};
 
 	auto binding_description = Vertex::GetBindingDescription();
 	auto attribute_descriptions = Vertex::GetAttributeDescriptions();
@@ -416,8 +416,8 @@ void vkpg::VulkanSwapChain::CreateGraphicsPipeline()
 
 	VkGraphicsPipelineCreateInfo pipeline_info{};
 	pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	pipeline_info.stageCount = 2;
-	pipeline_info.pStages = shader_stages;
+	pipeline_info.stageCount = shader_stages.size();
+	pipeline_info.pStages = shader_stages.data();
 	pipeline_info.pVertexInputState = &vertex_input_info;
 	pipeline_info.pInputAssemblyState = &input_assembly;
 	pipeline_info.pViewportState = &viewport_state;
