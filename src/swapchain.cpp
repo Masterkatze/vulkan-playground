@@ -8,6 +8,8 @@
 #include <array>
 #include <numeric>
 
+constexpr auto TEXTURE_PATH = "resources/textures/viking_room.png";
+
 vkpg::VulkanSwapChain::VulkanSwapChain(VulkanDevice& vulkan_device, VulkanWindow& window, VkSurfaceKHR& surface) :
     vulkan_device(vulkan_device), window(window), surface(surface)
 {
@@ -760,8 +762,6 @@ void vkpg::VulkanSwapChain::CreateDescriptorSetLayout()
 	auto result = vkCreateDescriptorSetLayout(vulkan_device.logical_device, &layout_info, nullptr, &descriptor_set_layout);
 	CheckVkResult(result, "Failed to create descriptor set layout");
 }
-
-constexpr auto TEXTURE_PATH = "resources/textures/viking_room.png";
 
 void vkpg::VulkanSwapChain::CreateTextureImage()
 {

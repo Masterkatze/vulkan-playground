@@ -28,6 +28,8 @@ const int MAX_FRAMES_IN_FLIGHT = 2;
 
 constexpr auto MODEL_PATH = "resources/models/viking_room.obj";
 
+float model_x = 0.0f, model_y = 0.0f, model_z = 0.0f;
+
 class Application
 {
 public:
@@ -190,15 +192,25 @@ private:
 			//ImGui::ShowDemoWindow();
 
 			ImGui::SetNextWindowSize(ImVec2(400, 80), ImGuiCond_FirstUseEver);
-			ImGui::Begin("Camera");
+			ImGui::Begin("Object and camera");
 
-			float rotation[3] = { camera.rotation.x, camera.rotation.y, camera.rotation.z };
-			ImGui::InputFloat3("Rotation", rotation);
-			camera.SetRotation({rotation[0], rotation[1], rotation[2]});
+			float position[3] = { model_x, model_y, model_z };
+			ImGui::InputFloat3("Model position", position);
+			model_x = position[0];
+			model_y = position[1];
+			model_z = position[2];
 
-			float position[3] = { camera.position.x, camera.position.y, camera.position.z };
-			ImGui::InputFloat3("Position", position);
-			camera.SetPosition({position[0], position[1], position[2]});
+			float camera_position[3] = { camera.position.x, camera.position.y, camera.position.z };
+			ImGui::InputFloat3("Position", camera_position);
+			camera.SetPosition({camera_position[0], camera_position[1], camera_position[2]});
+
+			float camera_rotation[3] = { camera.rotation.x, camera.rotation.y, camera.rotation.z };
+			ImGui::InputFloat3("Rotation", camera_rotation);
+			camera.SetRotation({camera_rotation[0], camera_rotation[1], camera_rotation[2]});
+
+			float camera_front[3] = { camera.front.x, camera.front.y, camera.front.z };
+			ImGui::InputFloat3("Front", camera_front);
+			camera.front = {camera_front[0], camera_front[1], camera_front[2]};
 
 			{
 				ImGui::Text("Perspective");
@@ -384,34 +396,33 @@ private:
 
 	void LoadModel()
 	{
-//        auto AddVertex = [this](vkpg::Vertex vertex)
 //		{
-//			static uint32_t index = 0;
-//			swap_chain.vertices.push_back(vertex);
-//			swap_chain.indices.push_back(index++);
-//		};
+//			auto AddVertex = [this](vkpg::Vertex vertex)
+//			{
+//				static uint32_t index = 0;
+//				swap_chain.vertices.push_back(vertex);
+//				swap_chain.indices.push_back(index++);
+//			};
 
-//		AddVertex({{0.0f, -1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}});
-//		AddVertex({{0.1f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}});
-//		AddVertex({{-1.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}});
+//			//AddVertex({{0.0f, -0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}});
+//			//AddVertex({{0.5f, 0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}});
+//			//AddVertex({{-0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}});
 
-//		return;
+//			swap_chain.vertices =
+//			{
+//				{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+//				{{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+//				{{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+//				{{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}
+//			};
 
-//        swap_chain.vertices =
-//        {
-//            {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
-//            {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-//            {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-//            {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}
-//        };
+//			swap_chain.indices =
+//			{
+//				0, 1, 2, 2, 3, 0
+//			};
 
-//        swap_chain.indices =
-//        {
-//            0, 1, 2, 2, 3, 0
-//        };
-
-
-//        return;
+//			return;
+//		}
 
 		tinyobj::attrib_t attrib;
 		std::vector<tinyobj::shape_t> shapes;
@@ -485,16 +496,17 @@ private:
 
 	void UpdateUniformBuffer(uint32_t current_image)
 	{
-        //static auto start_time = std::chrono::high_resolution_clock::now();
-        //auto current_time = std::chrono::high_resolution_clock::now();
-        //float time = std::chrono::duration<float, std::chrono::seconds::period>(current_time - start_time).count();
+//        static auto start_time = std::chrono::high_resolution_clock::now();
+//        auto current_time = std::chrono::high_resolution_clock::now();
+//        float time = std::chrono::duration<float, std::chrono::seconds::period>(current_time - start_time).count();
 
-        vkpg::UniformBufferObject ubo{};
+		vkpg::UniformBufferObject ubo{};
 		ubo.model = glm::mat4(1.0f);
-        //ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		//ubo.model = glm::rotate(ubo.model, time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		ubo.model = glm::translate(ubo.model, glm::vec3(model_x, model_y, model_z));
 
 		ubo.view = camera.matrices.view;
-        //ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		//ubo.view = glm::lookAt(glm::vec3(1.8f, 1.8f, 1.8f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 
 		ubo.projection = camera.matrices.perspective;
 

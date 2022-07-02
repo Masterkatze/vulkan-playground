@@ -75,6 +75,18 @@ void vkpg::Camera::SetMovementSpeed(float movement_speed)
 	this->movement_speed = movement_speed;
 }
 
+void vkpg::Camera::UpdateCameraFront()
+{
+	auto pitch = glm::radians(rotation.x);
+	auto yaw = glm::radians(rotation.z);
+
+	front.x = -std::cos(pitch) * std::sin(yaw);
+	front.y = std::sin(pitch);
+	front.z = std::cos(pitch) * std::cos(yaw);
+
+	front = glm::normalize(front);
+}
+
 void vkpg::Camera::Update(std::chrono::milliseconds delta_time)
 {
 	updated = false;
@@ -82,35 +94,29 @@ void vkpg::Camera::Update(std::chrono::milliseconds delta_time)
 	{
 		if(IsMoving())
 		{
-			glm::vec3 camera_front;
-			camera_front.x = -cos(glm::radians(rotation.x)) * sin(glm::radians(rotation.y));
-			camera_front.y = sin(glm::radians(rotation.x));
-			camera_front.z = cos(glm::radians(rotation.x)) * cos(glm::radians(rotation.y));
-			camera_front = glm::normalize(camera_front);
-
-            glm::vec3 camera_up(0.0f, 1.0f, 0.0f);
+			UpdateCameraFront();
 
 			float move_speed = std::chrono::duration_cast<std::chrono::seconds>(delta_time).count() * movement_speed;
 
 			if(keys.up && !keys.down)
-            {
-				position -= camera_front * move_speed;
-            }
+			{
+				position += front * move_speed;
+			}
 
 			if(keys.down && !keys.up)
-            {
-				position += camera_front * move_speed;
-            }
+			{
+				position -= front * move_speed;
+			}
 
 			if(keys.left && !keys.right)
-            {
-				position += glm::normalize(glm::cross(camera_front, camera_up)) * move_speed;
-            }
+			{
+				position -= glm::normalize(glm::cross(front, up)) * move_speed;
+			}
 
 			if(keys.right && !keys.left)
-            {
-				position -= glm::normalize(glm::cross(camera_front, camera_up)) * move_speed;
-            }
+			{
+				position += glm::normalize(glm::cross(front, up)) * move_speed;
+			}
 
 			UpdateViewMatrix();
 		}
@@ -119,27 +125,63 @@ void vkpg::Camera::Update(std::chrono::milliseconds delta_time)
 
 void vkpg::Camera::UpdateViewMatrix()
 {
-    glm::mat4 rotM = glm::mat4(1.0f);
+	glm::mat4 rotM = glm::mat4(1.0f);
 
-    rotM = glm::rotate(rotM, glm::radians(rotation.x * (flip_y ? -1.0f : 1.0f)), glm::vec3(1.0f, 0.0f, 0.0f));
-    rotM = glm::rotate(rotM, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
-    rotM = glm::rotate(rotM, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+	rotM = glm::rotate(rotM, glm::radians(rotation.x * (flip_y ? -1.0f : 1.0f)), glm::vec3(1.0f, 0.0f, 0.0f));
+	rotM = glm::rotate(rotM, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+	rotM = glm::rotate(rotM, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
 
-    glm::vec3 translation = position;
-    if(flip_y)
-    {
-        translation.y *= -1.0f;
-    }
-    glm::mat4 transM = glm::translate(glm::mat4(1.0f), translation);
+	rotM = glm::rotate(rotM, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
 
-    if(type == CameraType::firstperson)
-    {
-        matrices.view = rotM * transM;
-    }
-    else
-    {
-        matrices.view = transM * rotM;
-    }
+	glm::vec3 translation = position;
+	if(flip_y)
+	{
+		translation.y *= -1.0f;
+	}
+	glm::mat4 transM = glm::translate(glm::mat4(1.0f), translation);
 
-    updated = true;
+	if(type == CameraType::firstperson)
+	{
+		matrices.view = rotM * transM;
+	}
+	else
+	{
+		matrices.view = transM * rotM;
+	}
+
+	UpdateCameraFront();
+
+
+
+
+
+
+//	auto pitch = rotation.x;
+//	auto yaw = rotation.y;
+//	auto roll = rotation.z;
+
+//	front = glm::normalize(glm::vec3
+//	{
+//	    glm::cos(glm::radians(pitch)) * glm::sin(glm::radians(yaw)),
+//	    -glm::sin(glm::radians(pitch)),
+//	    glm::cos(glm::radians(pitch)) * glm::cos(glm::radians(yaw))
+//	});
+
+//	right = glm::normalize(glm::vec3
+//	{
+//	    glm::cos(glm::radians(yaw)),
+//	    0.f,
+//	    -glm::sin(glm::radians(yaw))
+//	});
+
+//	up = glm::normalize(glm::vec3
+//	{
+//	    glm::sin(glm::radians(pitch)) * glm::sin(glm::radians(yaw)),
+//	    glm::cos(glm::radians(pitch)),
+//	    glm::sin(glm::radians(pitch)) * glm::cos(glm::radians(yaw))
+//	});
+
+//	matrices.view = glm::lookAt(position, position + front, up);
+
+	updated = true;
 };

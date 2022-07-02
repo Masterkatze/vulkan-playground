@@ -38,6 +38,21 @@ void vkpg::Events::KeyCallback(void *window, int key, int scancode, int action, 
 		glfwSetWindowShouldClose(glfw_window, GLFW_TRUE);
 	}
 
+	if(key == GLFW_KEY_X)
+	{
+		if(action == GLFW_PRESS)   keys.x = true;
+		if(action == GLFW_RELEASE) keys.x = false;
+	}
+	if(key == GLFW_KEY_Y)
+	{
+		if(action == GLFW_PRESS)   keys.y = true;
+		if(action == GLFW_RELEASE) keys.y = false;
+	}
+	if(key == GLFW_KEY_Z)
+	{
+		if(action == GLFW_PRESS)   keys.z = true;
+		if(action == GLFW_RELEASE) keys.z = false;
+	}
 }
 
 void vkpg::Events::MouseButtonCallback(void *window, int button, int action, int mods)
@@ -72,13 +87,24 @@ void vkpg::Events::CursorPositionCallback(void *window, double x, double y)
 	}
 	if(mouse_buttons.right)
 	{
-        //camera.Translate(glm::vec3(0.0f, dy * 0.005f, dx * 0.005f));
-		camera.Translate(glm::vec3(-0.0f, 0.0f, dy * .005f));
+		camera.Translate(glm::vec3(0.0f, 0.0f, dy * .005f));
 	}
 	if(mouse_buttons.middle)
 	{
-		//camera.Translate(glm::vec3(-dx * 0.01f, -dy * 0.01f, 0.0f));
 		camera.Translate(glm::vec3(-dx * 0.01f, -dy * 0.01f, 0.0f));
+	}
+
+	if(keys.x)
+	{
+		camera.Translate(glm::vec3(dy * .005f, 0.0f, 0.0f));
+	}
+	if(keys.y)
+	{
+		camera.Translate(glm::vec3(0.0f, dy * .005f, 0.0f));
+	}
+	if(keys.z)
+	{
+		camera.Translate(glm::vec3(0.0f, 0.0f, dy * .005f));
 	}
 
 	mouse_pos = glm::vec2(x, y);

@@ -28,6 +28,13 @@ private:
 		bool right = false;
 		bool middle = false;
 	} mouse_buttons;
+
+	struct
+	{
+		bool x = false;
+		bool y = false;
+		bool z = false;
+	} keys;
 };
 
 } // namespace vkpg
