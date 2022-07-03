@@ -28,7 +28,7 @@ const int MAX_FRAMES_IN_FLIGHT = 2;
 
 constexpr auto MODEL_PATH = "resources/models/viking_room.obj";
 
-float model_x = 0.0f, model_y = 0.0f, model_z = 0.0f;
+glm::vec3 model_position{};
 
 class Application
 {
@@ -194,110 +194,49 @@ private:
 			ImGui::SetNextWindowSize(ImVec2(400, 80), ImGuiCond_FirstUseEver);
 			ImGui::Begin("Object and camera");
 
-			float position[3] = { model_x, model_y, model_z };
-			ImGui::InputFloat3("Model position", position);
-			model_x = position[0];
-			model_y = position[1];
-			model_z = position[2];
-
-			float camera_position[3] = { camera.position.x, camera.position.y, camera.position.z };
-			ImGui::InputFloat3("Position", camera_position);
-			camera.SetPosition({camera_position[0], camera_position[1], camera_position[2]});
-
-			float camera_rotation[3] = { camera.rotation.x, camera.rotation.y, camera.rotation.z };
-			ImGui::InputFloat3("Rotation", camera_rotation);
-			camera.SetRotation({camera_rotation[0], camera_rotation[1], camera_rotation[2]});
-
-			float camera_front[3] = { camera.front.x, camera.front.y, camera.front.z };
-			ImGui::InputFloat3("Front", camera_front);
-			camera.front = {camera_front[0], camera_front[1], camera_front[2]};
-
+			auto InputFloat3 = [](const glm::vec3& vector, const std::string& text)
 			{
-				ImGui::Text("Perspective");
+				float array[3] = { vector.x, vector.y, vector.z };
+				ImGui::InputFloat3(text.c_str(), array);
+				return glm::vec3{array[0], array[1], array[2]};
+			};
 
-				float matrices_perspective_0[4] =
-				{
-					camera.matrices.perspective[0][0],
-					camera.matrices.perspective[0][1],
-					camera.matrices.perspective[0][2],
-					camera.matrices.perspective[0][3]
-				};
-				ImGui::InputFloat4("", matrices_perspective_0);
-				camera.matrices.perspective[0][0] = matrices_perspective_0[0];
-				camera.matrices.perspective[0][1] = matrices_perspective_0[1];
-				camera.matrices.perspective[0][2] = matrices_perspective_0[2];
-				camera.matrices.perspective[0][3] = matrices_perspective_0[3];
-
-				float matrices_perspective_1[4] =
-				{
-					camera.matrices.perspective[1][0],
-					camera.matrices.perspective[1][1],
-					camera.matrices.perspective[1][2],
-					camera.matrices.perspective[1][3]
-				};
-				ImGui::InputFloat4("", matrices_perspective_1);
-
-				float matrices_perspective_2[4] =
-				{
-					camera.matrices.perspective[2][0],
-					camera.matrices.perspective[2][1],
-					camera.matrices.perspective[2][2],
-					camera.matrices.perspective[2][3]
-				};
-				ImGui::InputFloat4("", matrices_perspective_2);
-
-				float matrices_perspective_3[4] =
-				{
-					camera.matrices.perspective[3][0],
-					camera.matrices.perspective[3][1],
-					camera.matrices.perspective[3][2],
-					camera.matrices.perspective[3][3]
-				};
-				ImGui::InputFloat4("", matrices_perspective_3);
-			}
-
+			auto InputMatrix4 = [](glm::mat4& matrix, const std::string& text)
 			{
-				ImGui::Text("View");
-
-				float matrices_view_0[4] =
+				auto InputMatrixRow = [&matrix, &text](int i)
 				{
-					camera.matrices.view[0][0],
-					camera.matrices.view[0][1],
-					camera.matrices.view[0][2],
-					camera.matrices.view[0][3]
+					float row[4] =
+					{
+					    matrix[i][0],
+					    matrix[i][1],
+					    matrix[i][2],
+					    matrix[i][3]
+					};
+					ImGui::InputFloat4(std::string(text + " " + std::to_string(i)).c_str(), row);
+					for(int j = 0; j <= 3; j++)
+					{
+						matrix[i][j] = row[j];
+					}
 				};
-				ImGui::InputFloat4("", matrices_view_0);
 
-				float matrices_view_1[4] =
+				for(int i = 0; i <= 3; i++)
 				{
-					camera.matrices.view[1][0],
-					camera.matrices.view[1][1],
-					camera.matrices.view[1][2],
-					camera.matrices.view[1][3]
-				};
-				ImGui::InputFloat4("", matrices_view_1);
+					InputMatrixRow(i);
+				}
+			};
 
-				float matrices_view_2[4] =
-				{
-					camera.matrices.view[2][0],
-					camera.matrices.view[2][1],
-					camera.matrices.view[2][2],
-					camera.matrices.view[2][3]
-				};
-				ImGui::InputFloat4("", matrices_view_2);
+			model_position = InputFloat3(model_position, "Model position");
+			camera.SetPosition(InputFloat3(camera.position, "Camera position"));
+			camera.SetRotation(InputFloat3(camera.rotation, "Camera rotation"));
+			camera.front = InputFloat3(camera.front, "Camera front");
+			camera.right = InputFloat3(camera.right, "Camera right");
 
-				float matrices_view_3[4] =
-				{
-					camera.matrices.view[3][0],
-					camera.matrices.view[3][1],
-					camera.matrices.view[3][2],
-					camera.matrices.view[3][3]
-				};
-				ImGui::InputFloat4("", matrices_view_3);
-			}
+			ImGui::Spacing();
+			InputMatrix4(camera.matrices.perspective, "Perspective");
+			ImGui::Spacing();
+			InputMatrix4(camera.matrices.view, "View");
 
 			ImGui::End();
-
 
 			ImGui::Render();
 
@@ -496,18 +435,15 @@ private:
 
 	void UpdateUniformBuffer(uint32_t current_image)
 	{
-//        static auto start_time = std::chrono::high_resolution_clock::now();
-//        auto current_time = std::chrono::high_resolution_clock::now();
-//        float time = std::chrono::duration<float, std::chrono::seconds::period>(current_time - start_time).count();
+		static auto start_time = std::chrono::high_resolution_clock::now();
+		auto current_time = std::chrono::high_resolution_clock::now();
+		float time = std::chrono::duration<float, std::chrono::seconds::period>(current_time - start_time).count();
 
 		vkpg::UniformBufferObject ubo{};
 		ubo.model = glm::mat4(1.0f);
 		//ubo.model = glm::rotate(ubo.model, time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-		ubo.model = glm::translate(ubo.model, glm::vec3(model_x, model_y, model_z));
-
+		ubo.model = glm::translate(ubo.model, model_position);
 		ubo.view = camera.matrices.view;
-		//ubo.view = glm::lookAt(glm::vec3(1.8f, 1.8f, 1.8f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-
 		ubo.projection = camera.matrices.perspective;
 
 		void *data;

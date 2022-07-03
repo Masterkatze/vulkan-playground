@@ -75,18 +75,6 @@ void vkpg::Camera::SetMovementSpeed(float movement_speed)
 	this->movement_speed = movement_speed;
 }
 
-void vkpg::Camera::UpdateCameraFront()
-{
-	auto pitch = glm::radians(rotation.x);
-	auto yaw = glm::radians(rotation.z);
-
-	front.x = -std::cos(pitch) * std::sin(yaw);
-	front.y = std::sin(pitch);
-	front.z = std::cos(pitch) * std::cos(yaw);
-
-	front = glm::normalize(front);
-}
-
 void vkpg::Camera::Update(std::chrono::milliseconds delta_time)
 {
 	updated = false;
@@ -94,7 +82,7 @@ void vkpg::Camera::Update(std::chrono::milliseconds delta_time)
 	{
 		if(IsMoving())
 		{
-			UpdateCameraFront();
+			UpdateCameraFrontAndRight();
 
 			float move_speed = std::chrono::duration_cast<std::chrono::seconds>(delta_time).count() * movement_speed;
 
@@ -110,17 +98,32 @@ void vkpg::Camera::Update(std::chrono::milliseconds delta_time)
 
 			if(keys.left && !keys.right)
 			{
-				position -= glm::normalize(glm::cross(front, up)) * move_speed;
+
+				position -= right * move_speed;
 			}
 
 			if(keys.right && !keys.left)
 			{
-				position += glm::normalize(glm::cross(front, up)) * move_speed;
+				position += right * move_speed;
 			}
 
 			UpdateViewMatrix();
 		}
 	}
+}
+
+void vkpg::Camera::UpdateCameraFrontAndRight()
+{
+	auto pitch = glm::radians(rotation.x);
+	auto yaw = glm::radians(rotation.y);
+
+	front.x = -std::cos(pitch) * std::sin(yaw);
+	front.y = std::sin(pitch);
+	front.z = std::cos(pitch) * std::cos(yaw);
+	front = glm::normalize(front);
+
+	right = glm::cross(front, up);
+	right = glm::normalize(right);
 }
 
 void vkpg::Camera::UpdateViewMatrix()
@@ -131,7 +134,7 @@ void vkpg::Camera::UpdateViewMatrix()
 	rotM = glm::rotate(rotM, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
 	rotM = glm::rotate(rotM, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
 
-	rotM = glm::rotate(rotM, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+	//rotM = glm::rotate(rotM, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
 
 	glm::vec3 translation = position;
 	if(flip_y)
@@ -149,7 +152,16 @@ void vkpg::Camera::UpdateViewMatrix()
 		matrices.view = transM * rotM;
 	}
 
-	UpdateCameraFront();
+
+
+//	matrices.view = glm::lookAt(
+//	    glm::vec3(2, 1, 1), // Камера находится в мировых координатах (4,3,3)
+//	    glm::vec3(0, 0, 0), // И направлена в начало координат
+//	    glm::vec3(0, 0, -1)  // "Голова" находится сверху
+//	);
+
+
+	UpdateCameraFrontAndRight();
 
 
 

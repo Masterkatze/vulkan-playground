@@ -16,7 +16,7 @@ public:
 	glm::vec3 position{};
 	glm::vec3 rotation{};
 	glm::vec3 front{};
-	glm::vec3 up{0.0f, 0.0f, 1.0f};
+	glm::vec3 up{0.0f, 1.0f, 0.0f};
 	glm::vec3 right{};
 
 	float rotation_speed = 1.0f;
@@ -63,7 +63,7 @@ private:
     float z_near = 0.1;
     float z_far = 256.0;
 
-	void UpdateCameraFront();
+	void UpdateCameraFrontAndRight();
 	void UpdateViewMatrix();
 };
 
